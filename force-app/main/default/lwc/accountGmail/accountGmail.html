@@ -1,0 +1,581 @@
+<template>
+    <lightning-card>
+        <!-- Card Header -->
+        <div slot="title" class="slds-media slds-media_center">
+            <div class="slds-media__figure">
+                <lightning-icon icon-name="standard:email" size="small"></lightning-icon>
+            </div>
+            <div class="slds-media__body">
+                <h2 class="slds-card__header-title slds-truncate">
+                    <span class="slds-text-heading_small slds-m-right_x-small">Gmail Conversations</span>
+                    <span class="slds-badge slds-theme_success slds-m-left_xx-small">
+                        <span class="pulse-dot"></span> Live Sync Active
+                    </span>
+                    <template lwc:if={csmEmail}>
+                        <span class="slds-badge slds-badge_lightest slds-m-left_xx-small" title="CSM Email">
+                            <lightning-icon icon-name="utility:user" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                            CSM: {csmEmail}
+                        </span>
+                    </template>
+                    <template lwc:elseif={userEmail}>
+                        <span class="slds-badge slds-badge_lightest slds-m-left_xx-small" title="Connected Email Account">
+                            {userEmail}
+                        </span>
+                    </template>
+                </h2>
+            </div>
+        </div>
+
+        <!-- Header Actions -->
+        <div slot="actions">
+            <lightning-button-icon 
+                icon-name="utility:refresh" 
+                alternative-text="Refresh & Sync" 
+                title="Sync & Refresh Conversations" 
+                onclick={handleRefresh} 
+                class="slds-m-right_xx-small">
+            </lightning-button-icon>
+            <lightning-button 
+                variant="neutral" 
+                label="Simulate Client Reply" 
+                icon-name="utility:reply" 
+                onclick={handleOpenSimulateReply} 
+                class="slds-m-right_xx-small">
+            </lightning-button>
+            <lightning-button 
+                variant="brand" 
+                label="Compose Email" 
+                icon-name="utility:email" 
+                onclick={handleOpenCompose}>
+            </lightning-button>
+        </div>
+
+        <!-- Loading Spinner -->
+        <template lwc:if={isLoading}>
+            <div class="slds-is-relative slds-m-vertical_medium" style="min-height: 80px;">
+                <lightning-spinner alternative-text="Syncing with Gmail..." size="medium"></lightning-spinner>
+            </div>
+        </template>
+
+        <!-- Main Split-Pane Container -->
+        <div class="slds-grid slds-wrap split-pane-container">
+            <!-- Left Pane: Thread List (Master) -->
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_5-of-12 left-thread-pane">
+                <!-- Clean Search Bar -->
+                <div class="slds-p-around_small slds-border_bottom" style="background-color: #ffffff;">
+                    <div class="slds-grid slds-grid_vertical-align-center">
+                        <div class="slds-col slds-grow">
+                            <lightning-input 
+                                type="search" 
+                                placeholder="Search emails, contacts, subjects..." 
+                                value={searchKey} 
+                                onchange={handleSearchChange} 
+                                variant="label-hidden">
+                            </lightning-input>
+                        </div>
+                        <div class="slds-col slds-no-flex slds-m-left_small">
+                            <span class="slds-badge slds-badge_lightest" style="font-weight: 600;">
+                                {threadCountLabel}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Thread List Items -->
+                <template lwc:if={hasThreads}>
+                    <template for:each={threads} for:item="th">
+                        <div 
+                            key={th.threadId} 
+                            data-id={th.threadId} 
+                            class={th.itemClass} 
+                            onclick={handleSelectThread}>
+                            
+                            <!-- Sender / Contact & Timestamp -->
+                            <div class="slds-grid slds-grid_align-spread slds-m-bottom_xx-small">
+                                <span class="slds-truncate slds-text-title_bold" style="color: #0176d3; max-width: 65%;">
+                                    <template lwc:if={th.contactName}>
+                                        {th.contactName}
+                                    </template>
+                                    <template lwc:else>
+                                        {th.fromAddress}
+                                    </template>
+                                </span>
+                                <span class="slds-text-body_small slds-text-color_weak slds-shrink-none">
+                                    <lightning-formatted-date-time 
+                                        value={th.latestDate} 
+                                        month="short" 
+                                        day="numeric" 
+                                        hour="numeric" 
+                                        minute="2-digit">
+                                    </lightning-formatted-date-time>
+                                </span>
+                            </div>
+
+                            <!-- Subject Line -->
+                            <div class="slds-text-body_regular slds-truncate slds-m-bottom_xx-small" style="font-weight: 600;">
+                                {th.subject}
+                            </div>
+
+                            <!-- Snippet / Quick Summary Preview -->
+                            <div class="thread-snippet slds-m-bottom_xx-small">
+                                <template lwc:if={th.quickSummary}>
+                                    {th.quickSummary}
+                                </template>
+                                <template lwc:else>
+                                    {th.snippet}
+                                </template>
+                            </div>
+
+                            <!-- Message Counter & Attachments Footer -->
+                            <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-top_x-small">
+                                <div>
+                                    <template lwc:if={th.isMultipleMessages}>
+                                        <span class="badge-reply-counter" title="Replies received in this thread">
+                                            <lightning-icon icon-name="utility:chat" size="xx-small" class="slds-m-right_xx-small count-icon"></lightning-icon>
+                                            {th.messageCountLabel}
+                                        </span>
+                                    </template>
+                                    <template lwc:else>
+                                        <span class="badge-single-counter">
+                                            1 message
+                                        </span>
+                                    </template>
+                                </div>
+                                <div>
+                                    <template lwc:if={th.hasAttachments}>
+                                        <lightning-icon icon-name="utility:attach" size="xx-small" title="Contains attachments"></lightning-icon>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </template>
+
+                <template lwc:else>
+                    <div class="empty-pane-placeholder">
+                        <lightning-icon icon-name="utility:inbox" size="large" class="slds-m-bottom_small"></lightning-icon>
+                        <p class="slds-text-heading_small">No Conversations Found</p>
+                        <p class="slds-text-body_small slds-m-top_xx-small">
+                            Emails and client replies exchanged under this Account will appear here automatically.
+                        </p>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Right Pane: Conversation History & Quick Reply (Detail) -->
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_7-of-12 right-conversation-pane">
+                <template lwc:if={selectedThread}>
+                    <!-- Thread Detail Header -->
+                    <div class="slds-p-around_medium slds-border_bottom thread-header-bar">
+                        <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                            <div>
+                                <h3 class="slds-text-heading_medium slds-m-bottom_xx-small" style="font-weight: 700; color: #181818;">
+                                    {selectedThread.subject}
+                                </h3>
+                                <div class="slds-text-body_small slds-text-color_weak">
+                                    <template lwc:if={selectedThread.contactName}>
+                                        Contact: <strong>{selectedThread.contactName}</strong> &bull; 
+                                    </template>
+                                    Thread ID: <code>{selectedThread.threadId}</code>
+                                </div>
+                            </div>
+                            <div>
+                                <template lwc:if={isMultipleMessagesSelected}>
+                                    <span class="slds-badge slds-theme_success" style="font-weight: 600;">
+                                        {threadMessages.length} Messages in Thread
+                                    </span>
+                                </template>
+                                <template lwc:else>
+                                    <span class="slds-badge slds-badge_lightest">
+                                        1 Message
+                                    </span>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Conversation Summary Bar (Sleek, Compact, Non-Congested) -->
+                    <div class="slds-p-horizontal_medium slds-p-top_small ai-summary-wrapper">
+                        <div class="ai-summary-card">
+                            <!-- Compact Header Bar with Actions -->
+                            <div class="ai-summary-bar slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                                <div class="slds-grid slds-grid_vertical-align-center">
+                                    <span class="ai-sparkle-icon-wrapper slds-m-right_small">
+                                        <lightning-icon icon-name="utility:einstein" size="x-small" variant="inverse"></lightning-icon>
+                                    </span>
+                                    <span class="ai-bar-title">AI Thread Intelligence</span>
+                                    <template lwc:if={aiSummaryMessageLabel}>
+                                        <span class="slds-badge slds-badge_lightest slds-m-left_small ai-msg-count-badge">
+                                            {aiSummaryMessageLabel} &bull; {aiModelLabel}
+                                        </span>
+                                    </template>
+                                </div>
+                                <div class="slds-no-flex slds-grid slds-grid_vertical-align-center slds-m-left_small">
+                                    <template lwc:if={hasKeyPointsOrActions}>
+                                        <lightning-button 
+                                            label={aiToggleBtnLabel} 
+                                            variant="base" 
+                                            icon-name={aiCollapseIcon} 
+                                            icon-position="right"
+                                            onclick={handleToggleAiCollapse}
+                                            class="ai-toggle-btn slds-m-right_x-small">
+                                        </lightning-button>
+                                    </template>
+                                    <lightning-button-icon 
+                                        icon-name="utility:refresh" 
+                                        size="x-small" 
+                                        variant="border-filled" 
+                                        alternative-text="Regenerate" 
+                                        title="Regenerate AI Analysis"
+                                        onclick={handleRegenerateSummary}
+                                        disabled={isAiLoading}>
+                                    </lightning-button-icon>
+                                </div>
+                            </div>
+
+                            <!-- Dedicated Whole Thread Summary Section for CSM Overview -->
+                            <div class="ai-csm-summary-section slds-p-around_small slds-border_top">
+                                <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_xx-small">
+                                    <div class="slds-grid slds-grid_vertical-align-center">
+                                        <span class="csm-summary-badge">
+                                            <lightning-icon icon-name="utility:summary" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                            Whole Thread Summary
+                                        </span>
+                                    </div>
+                                    <template lwc:if={aiGeneratedTimeLabel}>
+                                        <span class="slds-text-body_small slds-text-color_weak ai-timestamp-text">
+                                            {aiGeneratedTimeLabel}
+                                        </span>
+                                    </template>
+                                </div>
+                                <template lwc:if={isAiLoading}>
+                                    <span class="slds-text-body_small slds-text-color_weak ai-loading-text">
+                                        Analyzing messages and generating whole thread overview...
+                                    </span>
+                                </template>
+                                <template lwc:else>
+                                    <p class="csm-summary-text">
+                                        {executiveSummaryText}
+                                    </p>
+                                </template>
+                            </div>
+
+                            <!-- Expandable Detailed Breakdown (Only when user expands) -->
+                            <template lwc:if={isAiExpanded}>
+                                <div class="ai-details-drawer slds-p-around_medium slds-border_top">
+                                    <!-- Key Discussion Points -->
+                                    <template lwc:if={hasKeyPoints}>
+                                        <div class="slds-m-bottom_small">
+                                            <div class="ai-section-label">
+                                                <lightning-icon icon-name="utility:check" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                                <strong>COMMUNICATION HISTORY & DISCUSSION POINTS</strong>
+                                            </div>
+                                            <ul class="slds-list_dotted slds-m-top_xx-small ai-bullet-list">
+                                                <template for:each={aiSummary.keyPoints} for:item="kp">
+                                                    <li key={kp}>{kp}</li>
+                                                </template>
+                                            </ul>
+                                        </div>
+                                    </template>
+
+                                    <!-- Action Items -->
+                                    <template lwc:if={hasActionItems}>
+                                        <div>
+                                            <div class="ai-section-label">
+                                                <lightning-icon icon-name="utility:task" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                                <strong>ACTION ITEMS & NEXT STEPS</strong>
+                                            </div>
+                                            <ul class="slds-list_dotted slds-m-top_xx-small ai-bullet-list">
+                                                <template for:each={aiSummary.actionItems} for:item="ai">
+                                                    <li key={ai} class="ai-action-item-text">{ai}</li>
+                                                </template>
+                                            </ul>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Conversation History Stream (Replies shown below the first message) -->
+                    <div class="slds-p-around_medium conversation-stream-container" style="flex: 1; overflow-y: auto;">
+                        <template lwc:if={isThreadLoading}>
+                            <div class="slds-is-relative slds-m-vertical_large" style="height: 60px;">
+                                <lightning-spinner alternative-text="Loading conversation..." size="small"></lightning-spinner>
+                            </div>
+                        </template>
+
+                        <template for:each={threadMessages} for:item="msg">
+                            <!-- Visual connector between messages in the same thread -->
+                            <template lwc:if={msg.isReply}>
+                                <div key={msg.replySeparatorKey} class="thread-connector-container">
+                                    <div class="thread-connector-line"></div>
+                                    <span class="thread-reply-pill">Reply #{msg.messageIndex}</span>
+                                </div>
+                            </template>
+
+                            <!-- Message Card -->
+                            <div key={msg.id} class={msg.cardClass}>
+                                <!-- Message Header -->
+                                <div class="message-header slds-grid slds-grid_align-spread slds-grid_vertical-align-center">
+                                    <div>
+                                        <div class="slds-grid slds-grid_vertical-align-center">
+                                            <lightning-avatar 
+                                                fallback-icon-name={msg.avatarIcon} 
+                                                size="small" 
+                                                class="slds-m-right_x-small">
+                                            </lightning-avatar>
+                                            <div>
+                                                <div class="slds-text-body_regular" style="font-weight: 700;">
+                                                    {msg.fromAddress}
+                                                </div>
+                                                <div class="slds-text-body_small slds-text-color_weak">
+                                                    To: {msg.toAddress}
+                                                    <template lwc:if={msg.ccAddress}>
+                                                        &bull; Cc: {msg.ccAddress}
+                                                    </template>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="slds-text-align_right">
+                                        <div class="slds-text-body_small slds-text-color_weak">
+                                            <lightning-formatted-date-time 
+                                                value={msg.dateVal} 
+                                                year="numeric" 
+                                                month="short" 
+                                                day="numeric" 
+                                                hour="numeric" 
+                                                minute="2-digit">
+                                            </lightning-formatted-date-time>
+                                        </div>
+                                        <span class={msg.badgeClass}>{msg.directionLabel}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Message Body Content -->
+                                <div class="message-body">
+                                    <template lwc:if={msg.bodyHtml}>
+                                        <lightning-formatted-rich-text value={msg.bodyHtml}></lightning-formatted-rich-text>
+                                    </template>
+                                    <template lwc:else>
+                                        <p style="white-space: pre-wrap;">{msg.snippet}</p>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Inline Quick-Reply Box (Reply to this Thread) -->
+                    <div class="quick-reply-box">
+                        <div class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-m-bottom_x-small">
+                            <span class="slds-text-title_bold" style="color: #0176d3;">
+                                <lightning-icon icon-name="utility:reply" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                Reply to this Conversation
+                            </span>
+                            <span class="slds-text-body_small slds-text-color_weak">
+                                Recipient: <strong>{replyToAddress}</strong>
+                            </span>
+                        </div>
+                        <lightning-textarea 
+                            value={replyBody} 
+                            onchange={handleReplyBodyChange} 
+                            placeholder="Type your reply here... (will be delivered as a response in this exact thread)" 
+                            variant="label-hidden" 
+                            rows="3" 
+                            class="slds-m-bottom_x-small">
+                        </lightning-textarea>
+                        <div class="slds-grid slds-grid_align-end">
+                            <lightning-button 
+                                variant="brand" 
+                                label="Send Reply via Gmail" 
+                                icon-name="utility:send" 
+                                onclick={handleSendReply} 
+                                disabled={isSendingReply}>
+                            </lightning-button>
+                        </div>
+                    </div>
+                </template>
+
+                <template lwc:else>
+                    <div class="empty-pane-placeholder">
+                        <lightning-icon icon-name="utility:chat" size="large" class="slds-m-bottom_small"></lightning-icon>
+                        <p class="slds-text-heading_medium" style="font-weight: 600;">No Conversation Selected</p>
+                        <p class="slds-text-body_regular slds-m-top_xx-small" style="max-width: 320px;">
+                            Click any email thread from the left pane to view the complete message history and send replies directly through Gmail.
+                        </p>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Compose Email Modal -->
+        <template lwc:if={isComposeOpen}>
+            <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_medium" aria-modal="true">
+                <div class="slds-modal__container">
+                    <!-- Modal Header -->
+                    <header class="slds-modal__header">
+                        <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={handleCloseCompose}>
+                            <lightning-icon icon-name="utility:close" alternative-text="Close" variant="inverse" size="small"></lightning-icon>
+                        </button>
+                        <h2 class="slds-modal__title slds-hyphenate slds-text-heading_medium">
+                            <lightning-icon icon-name="standard:email" size="small" class="slds-m-right_x-small"></lightning-icon>
+                            Compose New Email (via Gmail)
+                        </h2>
+                    </header>
+
+                    <!-- Modal Body -->
+                    <div class="slds-modal__content slds-p-around_medium">
+                        <template lwc:if={isSending}>
+                            <lightning-spinner alternative-text="Sending email via Gmail..." size="medium"></lightning-spinner>
+                        </template>
+
+                        <div class="slds-form slds-form_stacked">
+                            <!-- Sender CSM Email Display -->
+                            <div class="slds-m-bottom_small slds-p-around_x-small slds-theme_shade slds-border_top slds-border_bottom slds-border_right slds-border_left" style="border-radius: 4px; display: flex; align-items: center;">
+                                <lightning-icon icon-name="utility:user" size="xx-small" class="slds-m-right_x-small"></lightning-icon>
+                                <span class="slds-text-title_bold slds-m-right_xx-small">From:</span>
+                                <span class="slds-text-body_regular">{fromAddressDisplay}</span>
+                            </div>
+
+                            <!-- Contact Picker Dropdown -->
+                            <lightning-combobox 
+                                label="Select Account Contact (Optional)" 
+                                placeholder="Choose a Contact from this Account" 
+                                value={composeContactId} 
+                                options={contactOptions} 
+                                onchange={handleComposeContactChange} 
+                                class="slds-m-bottom_small">
+                            </lightning-combobox>
+
+                            <!-- Recipient To -->
+                            <lightning-input 
+                                type="email" 
+                                label="To Email Address" 
+                                value={composeToAddress} 
+                                onchange={handleComposeToChange} 
+                                required 
+                                placeholder="e.g. client@example.com" 
+                                class="slds-m-bottom_small">
+                            </lightning-input>
+
+                            <!-- CC -->
+                            <lightning-input 
+                                type="text" 
+                                label="Cc Email Address(es)" 
+                                value={composeCcAddress} 
+                                onchange={handleComposeCcChange} 
+                                placeholder="Optional CC recipients" 
+                                class="slds-m-bottom_small">
+                            </lightning-input>
+
+                            <!-- Subject -->
+                            <lightning-input 
+                                type="text" 
+                                label="Subject" 
+                                value={composeSubject} 
+                                onchange={handleComposeSubjectChange} 
+                                required 
+                                placeholder="Email Subject" 
+                                class="slds-m-bottom_small">
+                            </lightning-input>
+
+                            <!-- Email Body (Rich Text) -->
+                            <label class="slds-form-element__label slds-no-flex">Email Body</label>
+                            <lightning-input-rich-text 
+                                value={composeBodyHtml} 
+                                onchange={handleComposeBodyChange} 
+                                placeholder="Compose your email message..." 
+                                style="min-height: 180px;">
+                            </lightning-input-rich-text>
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <footer class="slds-modal__footer">
+                        <lightning-button 
+                            label="Cancel" 
+                            variant="neutral" 
+                            onclick={handleCloseCompose} 
+                            disabled={isSending} 
+                            class="slds-m-right_small">
+                        </lightning-button>
+                        <lightning-button 
+                            label="Send Email via Gmail" 
+                            variant="brand" 
+                            icon-name="utility:send" 
+                            onclick={handleSendCompose} 
+                            disabled={isSending}>
+                        </lightning-button>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </template>
+
+        <!-- Simulate Client Reply Modal -->
+        <template lwc:if={isSimulateReplyOpen}>
+            <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open" aria-modal="true">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header">
+                        <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick={handleCloseSimulateReply}>
+                            <lightning-icon icon-name="utility:close" alternative-text="Close" variant="inverse" size="small"></lightning-icon>
+                        </button>
+                        <h2 class="slds-modal__title slds-hyphenate slds-text-heading_medium">
+                            <lightning-icon icon-name="utility:reply" size="small" class="slds-m-right_x-small"></lightning-icon>
+                            Simulate Inbound Client Reply
+                        </h2>
+                        <p class="slds-m-top_x-small slds-text-body_small slds-text-color_weak">
+                            Test receiving an inbound email reply from a contact back into Salesforce.
+                        </p>
+                    </header>
+
+                    <div class="slds-modal__content slds-p-around_medium">
+                        <template lwc:if={isSimulating}>
+                            <lightning-spinner alternative-text="Receiving client reply..." size="medium"></lightning-spinner>
+                        </template>
+
+                        <div class="slds-form slds-form_stacked">
+                            <lightning-combobox 
+                                label="Contact Sender (Replying Client)" 
+                                placeholder="Select Contact" 
+                                value={simulateContactId} 
+                                options={contactOptions} 
+                                onchange={handleSimulateContactChange} 
+                                required
+                                class="slds-m-bottom_small">
+                            </lightning-combobox>
+
+                            <lightning-textarea 
+                                label="Client Reply Message" 
+                                value={simulateReplyText} 
+                                onchange={handleSimulateTextChange} 
+                                required 
+                                placeholder="e.g. Hi Sumit, thanks for reaching out! We are very interested in proceeding with the proposal." 
+                                rows="4">
+                            </lightning-textarea>
+                        </div>
+                    </div>
+
+                    <footer class="slds-modal__footer">
+                        <lightning-button 
+                            label="Cancel" 
+                            variant="neutral" 
+                            onclick={handleCloseSimulateReply} 
+                            disabled={isSimulating} 
+                            class="slds-m-right_small">
+                        </lightning-button>
+                        <lightning-button 
+                            label="Receive Client Reply" 
+                            variant="brand" 
+                            icon-name="utility:download" 
+                            onclick={handleSendSimulatedReply} 
+                            disabled={isSimulating}>
+                        </lightning-button>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </template>
+    </lightning-card>
+</template>

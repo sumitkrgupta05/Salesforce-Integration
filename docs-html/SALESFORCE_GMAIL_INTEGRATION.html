@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Salesforce &amp; Gmail Real-Time Bidirectional Integration | Salesforce Enterprise Architecture</title>
+  <!-- Mermaid JS for Dynamic Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      securityLevel: 'loose',
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+      sequence: { useMaxWidth: true, showSequenceNumbers: true }
+    });
+  </script>
+  <style>
+    :root {
+      --sf-blue: #0176D3;
+      --sf-dark-blue: #0b5cab;
+      --sf-navy: #032d60;
+      --slack-aubergine: #4A154B;
+      --slack-green: #2EB67D;
+      --slack-yellow: #ECB22E;
+      --slack-red: #E01E5A;
+      --slack-blue: #36C5F0;
+      --gcp-blue: #4285F4;
+      --snowflake-blue: #29B5E8;
+      --gmail-red: #EA4335;
+      --cal-blue: #1A73E8;
+      --bg-light: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --border-color: #e2e8f0;
+      --code-bg: #1e1e24;
+      --radius-lg: 12px;
+      --radius-md: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-light);
+      color: var(--text-main);
+      line-height: 1.68;
+      padding-bottom: 80px;
+    }
+
+    /* Scroll progress indicator */
+    #progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--sf-blue), var(--slack-green), var(--slack-blue));
+      width: 0%;
+      z-index: 999;
+      transition: width 0.1s ease;
+    }
+
+    /* Hero Header */
+    header.hero {
+      background: linear-gradient(135deg, var(--sf-navy) 0%, #0f172a 45%, var(--slack-aubergine) 100%);
+      color: white;
+      padding: 48px 24px;
+      text-align: center;
+      border-bottom: 4px solid var(--slack-green);
+      position: relative;
+    }
+
+    header.hero h1 {
+      font-size: 2.3rem;
+      margin-bottom: 12px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    header.hero p {
+      font-size: 1.1rem;
+      color: #cbd5e1;
+      max-width: 850px;
+      margin: 0 auto 20px auto;
+    }
+
+    .badge-bar {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f1f5f9;
+    }
+
+    .badge.success {
+      background: rgba(46, 182, 125, 0.25);
+      border-color: #2EB67D;
+      color: #86efac;
+    }
+
+    /* Layout Container */
+    .container {
+      max-width: 1220px;
+      margin: 28px auto;
+      padding: 0 20px;
+    }
+
+    /* Sticky Navigation Bar with Search */
+    .nav-wrapper {
+      position: sticky;
+      top: 12px;
+      z-index: 100;
+      margin-bottom: 28px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      padding: 6px;
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      scrollbar-width: thin;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .nav-tab {
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      color: var(--text-sub);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .nav-tab:hover {
+      background: #f1f5f9;
+      color: var(--sf-blue);
+    }
+
+    .nav-tab.active {
+      background: var(--sf-blue);
+      color: #ffffff;
+    }
+
+    /* Section Cards */
+    .section-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    h2.section-title {
+      font-size: 1.55rem;
+      margin-bottom: 20px;
+      color: var(--sf-navy);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 12px;
+    }
+
+    .title-badge {
+      font-size: 0.72rem;
+      font-weight: 800;
+      background: #e0f2fe;
+      color: var(--sf-blue);
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    h3.sub-title {
+      font-size: 1.25rem;
+      margin: 24px 0 12px 0;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h4.sub-sub-title {
+      font-size: 1.05rem;
+      margin: 18px 0 10px 0;
+      color: #1e293b;
+    }
+
+    p {
+      color: #334155;
+      font-size: 0.98rem;
+      margin-bottom: 14px;
+    }
+
+    /* Lists */
+    ul.styled-list, ol.styled-ordered-list {
+      padding-left: 24px;
+      margin-bottom: 18px;
+    }
+
+    li {
+      color: #334155;
+      font-size: 0.96rem;
+      margin-bottom: 8px;
+    }
+
+    li.task-item {
+      list-style-type: none;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    li.task-item.checked {
+      color: #059669;
+      font-weight: 500;
+    }
+
+    .check-icon {
+      font-weight: bold;
+      color: #10b981;
+    }
+
+    /* Visual Illustration Card */
+    .visual-illustration-card {
+      background: #0f172a;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin: 24px 0 32px 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      border: 1px solid #334155;
+    }
+
+    .illustration-header {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .illustration-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: #0284c7;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .illustration-header h3 {
+      font-size: 1.2rem;
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    /* Diagram Box (Mermaid) */
+    .diagram-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin: 22px 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+
+    .diagram-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    /* Step Card */
+    .step-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 18px 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      border-left: 4px solid var(--sf-blue);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .step-badge {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #ffffff;
+      background: var(--sf-blue);
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .step-card h4 {
+      font-size: 1.15rem;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    /* Code Container & Syntax Styling */
+    .code-container {
+      background: var(--code-bg);
+      border-radius: var(--radius-md);
+      margin: 18px 0;
+      overflow: hidden;
+      border: 1px solid #334155;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #141418;
+      padding: 8px 16px;
+      border-bottom: 1px solid #2d2d35;
+    }
+
+    .lang-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+    }
+
+    .copy-btn {
+      background: #282832;
+      color: #cbd5e1;
+      border: 1px solid #444;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: var(--sf-blue);
+      color: #ffffff;
+      border-color: var(--sf-blue);
+    }
+
+    pre {
+      padding: 16px;
+      overflow-x: auto;
+      color: #f8f8f2;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    }
+
+    .inline-code {
+      background: #edf2f7;
+      color: #c026d3;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      border: 1px solid #e2e8f0;
+      font-weight: 600;
+    }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      text-align: left;
+      font-size: 0.94rem;
+    }
+
+    .styled-table th {
+      background: #f1f5f9;
+      color: var(--sf-navy);
+      font-weight: 700;
+      padding: 12px 16px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+
+    .styled-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+
+    .styled-table tr:hover {
+      background: #f8fafc;
+    }
+
+    /* Callout Boxes */
+    .callout-box {
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      margin: 20px 0;
+      border-left: 4px solid;
+    }
+
+    .callout-box.info {
+      background: #f0f9ff;
+      border-color: #0284c7;
+    }
+    .callout-box.info .callout-title { color: #0369a1; }
+
+    .callout-box.tip {
+      background: #fdf4ff;
+      border-color: #c084fc;
+    }
+    .callout-box.tip .callout-title { color: #7e22ce; }
+
+    .callout-box.warning {
+      background: #fffbeb;
+      border-color: #f59e0b;
+    }
+    .callout-box.warning .callout-title { color: #b45309; }
+
+    .callout-box.important {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+    .callout-box.important .callout-title { color: #1d4ed8; }
+
+    .callout-box.caution {
+      background: #fef2f2;
+      border-color: #ef4444;
+    }
+    .callout-box.caution .callout-title { color: #b91c1c; }
+
+    .callout-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .callout-body {
+      color: #334155;
+      font-size: 0.95rem;
+    }
+
+    hr.section-divider {
+      border: 0;
+      height: 1px;
+      background: #e2e8f0;
+      margin: 32px 0;
+    }
+
+    /* Image Container */
+    .doc-img-container {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .doc-img {
+      max-width: 100%;
+      border-radius: var(--radius-md);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border: 1px solid var(--border-color);
+    }
+    .img-caption {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    /* Back to top button */
+    .back-to-top {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--sf-blue);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 24px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(1, 118, 211, 0.4);
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      z-index: 99;
+    }
+
+    .back-to-top:hover {
+      background: var(--sf-dark-blue);
+      transform: translateY(-2px);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 32px 20px;
+      color: #64748b;
+      font-size: 0.88rem;
+      border-top: 1px solid var(--border-color);
+      background: #ffffff;
+      margin-top: 48px;
+    }
+
+    @media print {
+      .nav-wrapper, .back-to-top, .copy-btn, #progress-bar { display: none !important; }
+      .section-card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div id="progress-bar"></div>
+
+  <!-- Hero Header -->
+  <header class="hero">
+    <h1>Salesforce &amp; Gmail Real-Time Bidirectional Integration</h1>
+    <p>Enterprise Technical Documentation &amp; Operational Reference</p>
+    <div class="badge-bar">
+      <span class="badge success">Production Ready</span>
+      <span class="badge ">Salesforce Lightning</span>
+      <span class="badge ">Enterprise Architecture</span>
+      <span class="badge ">Complete Implementation</span>
+      <span class="badge ">Gmail RFC 2822</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Sticky Navigation Tabs -->
+    <div class="nav-wrapper">
+      <nav class="nav-tabs">
+        <a href="#sec-1-architecture-overview" class="nav-tab">Architecture Overview</a>
+        <a href="#sec-2-step-by-step-data-flow-sequence-workflows-with-exact-file-names" class="nav-tab">Step-by-Step Data Flow &amp; Sequence Workflows (With Exact File Names)</a>
+        <a href="#sec-3-key-architecture-principles" class="nav-tab">Key Architecture Principles</a>
+        <a href="#sec-4-technologies-tools-metadata-used" class="nav-tab">Technologies, Tools &amp; Metadata Used</a>
+        <a href="#sec-5-implementation-steps-accomplished" class="nav-tab">Implementation Steps Accomplished</a>
+        <a href="#sec-6-directory-file-structure" class="nav-tab">Directory &amp; File Structure</a>
+        <a href="#sec-7-how-to-use-on-the-account-record-page" class="nav-tab">How to Use on the Account Record Page</a>
+        <a href="#sec-8-verification-test-suite-summary" class="nav-tab">Verification &amp; Test Suite Summary</a>
+      </nav>
+    </div>
+
+    <!-- Document Content Sections -->
+    <p>A complete, enterprise-grade technical guide and documentation for the bidirectional real-time integration between <strong>Salesforce</strong> and <strong>Gmail</strong>, featuring:</p>
+<ol class="styled-ordered-list">
+<li><strong>Domain-Free Native CSM & Client Bidirectional Threading Engine</strong>: Eliminates GCP Admin and custom domain dependencies (<code class="inline-code">skg5.com</code>) by routing communication through Account CSM Email (<code class="inline-code">Account.CSM_Email__c</code>), native Salesforce email services, RFC 2822 threading headers, and personal inbox synchronization.</li>
+<li><strong>Whole Thread AI Summarization Engine</strong>: Powered by Google Gemini and smart fallback heuristics, providing CSMs with an instant narrative overview of complete customer email threads directly above the conversation stream.</li>
+<li><strong>Calendar Isolation & Branded Meeting Scheduling</strong>: Strict separation between email events and Google Calendar meetings, preventing email traffic from cluttering the calendar while dispatching clean, branded meeting invitations (<code class="inline-code">Invitation from CSM-Teqfoucs</code>).</li>
+<li><strong>Interactive Split-Pane LWC (<code class="inline-code">accountGmail</code>)</strong>: Master-detail conversation reader, real-time message counter badges, turn-by-turn reply streams, and inline composer.</li>
+</ol>
+<hr class="section-divider"/>
+<section class="section-card" id="sec-1-architecture-overview">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 1. Architecture Overview</h2>
+
+    <div class="visual-illustration-card">
+      <div class="illustration-header">
+        <span class="illustration-tag">Enterprise Email Synchronization Architecture</span>
+        <h3>Split-Pane LWC, RFC 2822 Inbound Header Routing & AI Summarizer</h3>
+      </div>
+      <svg viewBox="0 0 960 360" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+        <!-- Left Pane: Master Thread List -->
+        <g transform="translate(40, 30)">
+          <rect x="0" y="0" width="320" height="300" rx="10" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+          <rect x="0" y="0" width="320" height="38" rx="10" fill="#0f172a"/>
+          <text x="16" y="24" fill="#ffffff" font-size="13" font-weight="bold">📥 Inbound Threads (accountGmail)</text>
+
+          <!-- Thread Item 1 (Active) -->
+          <rect x="8" y="48" width="304" height="68" rx="6" fill="#0284c7" fill-opacity="0.25" stroke="#38bdf8"/>
+          <circle cx="28" cy="72" r="14" fill="#EA4335"/>
+          <text x="24" y="77" fill="#ffffff" font-size="12" font-weight="bold">M</text>
+          <text x="50" y="68" fill="#ffffff" font-size="12" font-weight="bold">Project Renewal 2026</text>
+          <text x="50" y="85" fill="#93c5fd" font-size="10">skgsumit5@gmail.com • 3 msgs</text>
+          <text x="50" y="100" fill="#cbd5e1" font-size="10">"Let's finalize the terms..."</text>
+
+          <!-- Thread Item 2 -->
+          <rect x="8" y="124" width="304" height="60" rx="6" fill="#0f172a" stroke="#334155"/>
+          <circle cx="28" cy="148" r="14" fill="#4285F4"/>
+          <text x="24" y="153" fill="#ffffff" font-size="12" font-weight="bold">G</text>
+          <text x="50" y="144" fill="#e2e8f0" font-size="12" font-weight="bold">API Integration Check</text>
+          <text x="50" y="160" fill="#94a3b8" font-size="10">john@edgecomms.com • 1 msg</text>
+
+          <!-- Thread Item 3 -->
+          <rect x="8" y="192" width="304" height="60" rx="6" fill="#0f172a" stroke="#334155"/>
+          <circle cx="28" cy="216" r="14" fill="#34A853"/>
+          <text x="24" y="221" fill="#ffffff" font-size="12" font-weight="bold">C</text>
+          <text x="50" y="212" fill="#e2e8f0" font-size="12" font-weight="bold">Calendar Coordination</text>
+          <text x="50" y="228" fill="#94a3b8" font-size="10">support@teqfocus.com • 4 msgs</text>
+        </g>
+
+        <!-- Right Pane: AI Summary & Thread Stream -->
+        <g transform="translate(380, 30)">
+          <rect x="0" y="0" width="540" height="300" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+          
+          <!-- AI Summary Card Header -->
+          <rect x="12" y="12" width="516" height="85" rx="8" fill="#f0fdf4" stroke="#86efac"/>
+          <text x="24" y="32" fill="#166534" font-size="13" font-weight="bold">✨ Gemini Whole Thread Intelligence:</text>
+          <text x="24" y="52" fill="#15803d" font-size="11">Client confirmed budget allocation for Q3. Requested updated MSA agreement.</text>
+          <text x="24" y="70" fill="#166534" font-size="11" font-weight="bold">Action Items: Send PDF contract; copy CSM Summo CSM.</text>
+
+          <!-- Message Card 1 (Inbound) -->
+          <rect x="12" y="105" width="516" height="75" rx="6" fill="#f8fafc" stroke="#cbd5e1"/>
+          <text x="24" y="125" fill="#0f172a" font-size="12" font-weight="bold">From: Sumit Gupta &lt;skgsumit5@gmail.com&gt;</text>
+          <text x="400" y="125" fill="#64748b" font-size="10">Today, 10:14 AM</text>
+          <text x="24" y="145" fill="#334155" font-size="11">"Hi Summo, we reviewed the proposal and are ready to proceed with sign-off."</text>
+          <text x="24" y="165" fill="#0284c7" font-size="9" font-family="monospace">RFC 2822: Message-ID &lt;CA+4mZ@mail.gmail.com&gt; | In-Reply-To: &lt;csm-reply@...&gt;</text>
+
+          <!-- Inline Reply Box -->
+          <rect x="12" y="190" width="516" height="98" rx="8" fill="#f1f5f9" stroke="#94a3b8"/>
+          <text x="24" y="212" fill="#475569" font-size="11" font-weight="bold">Reply as CSM (auto-copies skgsummo5@gmail.com):</text>
+          <rect x="24" y="222" width="490" height="34" rx="4" fill="#ffffff" stroke="#cbd5e1"/>
+          <text x="34" y="244" fill="#0f172a" font-size="11">Thank you Sumit! Attached is the revised MSA. Looking forward to our launch.</text>
+          <rect x="420" y="262" width="94" height="22" rx="4" fill="#EA4335"/>
+          <text x="467" y="277" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">Send Reply ✈️</text>
+        </g>
+      </svg>
+    </div>
+  
+<p>This integration provides two complementary communication pillars:</p>
+<ul class="styled-list">
+<li><strong>Pillar A: Native CSM/Client Bidirectional Messaging & Personal Mailbox Threading</strong> — Powered by <code class="inline-code">AccountGmailController</code>, <code class="inline-code">AccountGmailInboundHandler</code>, and <code class="inline-code">Messaging.SingleEmailMessage</code>. It uses dynamic Salesforce user resolution to bypass Developer Edition daily email limits, injects RFC 2822 headers for native Gmail thread grouping, and keeps both the Salesforce LWC and personal inboxes synchronized.</li>
+<li><strong>Pillar B: AI Thread Intelligence & Calendar Scheduling</strong> — Powered by <code class="inline-code">GmailAIService</code>, <code class="inline-code">AccountCalendarController</code>, and <code class="inline-code">GoogleCalendarService</code>. It summarizes whole customer threads for quick CSM briefing and isolates calendar meetings from email events.</li>
+</ul>
+<h3 class="sub-title">Native CSM & Client Integration Diagram</h3>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+graph TD
+    subgraph "Salesforce Org (learn_dc)"
+        LWC["accountGmail LWC<br/>(Split-Pane Reader + AI Summary)"]
+        CalLWC["accountGoogleCalendar LWC<br/>(Scheduled Meetings)"]
+        Ctrl["AccountGmailController.cls"]
+        CalCtrl["AccountCalendarController.cls"]
+        InboundHdlr["AccountGmailInboundHandler.cls<br/>(Inbound Email Service: csm-reply@...)"]
+        AISvc["GmailAIService.cls<br/>(Whole Thread Narrative + Action Items)"]
+        CacheObj["Gmail_Thread_Summary__c<br/>(Smart Response Cache)"]
+        EventObj["Standard Event Object<br/>(Filtered: Gmail vs Calendar)"]
+        PE["Platform Event<br/>(Gmail_Sync_Notification__e)"]
+    end
+
+    subgraph "External Email Clients & Inboxes"
+        ClientMail["Client Inbox<br/>(skgsumit5@gmail.com)"]
+        CSMMail["CSM Personal Inbox<br/>(skgsummo5@gmail.com)"]
+        GCalAPI["Google Calendar API v3<br/>(sendUpdates=none)"]
+    end
+
+    %% Outbound Flow
+    LWC -->|"1. CSM composes / replies in LWC"| Ctrl
+    Ctrl -->|"2. Direct email with RFC headers"| ClientMail
+    Ctrl -->|"3. Direct copy with RFC headers"| CSMMail
+    Ctrl -->|"4. Logs OUTBOUND Event"| EventObj
+
+    %% Inbound Client Reply
+    ClientMail -->|"5. Client replies (routes to csm-reply@...)"| InboundHdlr
+    InboundHdlr -->|"6. Logs INBOUND Event"| EventObj
+    InboundHdlr -->|"7. Forwards reply with quoted history"| CSMMail
+    InboundHdlr -->|"8. Publishes sync event"| PE
+    PE -->|"9. empApi live refresh"| LWC
+
+    %% CSM Personal Email Reply
+    CSMMail -->|"10. CSM replies from Gmail (to csm-reply@...)"| InboundHdlr
+    InboundHdlr -->|"11. Forwards reply to Client"| ClientMail
+    InboundHdlr -->|"12. Logs OUTBOUND Event & refreshes LWC"| EventObj
+
+    %% AI Summary Flow
+    Ctrl -->|"13. Fetch/Generate Summary"| AISvc
+    AISvc -->|"14. Read/Write Cache"| CacheObj
+    AISvc -->|"15. Display Whole Thread Overview"| LWC
+
+    %% Calendar Meeting Flow
+    CalLWC -->|"16. Schedule Meeting"| CalCtrl
+    CalCtrl -->|"17. Create Meet & Event"| GCalAPI
+    CalCtrl -->|"18. Send 'Invitation from CSM-Teqfoucs'"| ClientMail
+    CalCtrl -->|"19. Query Events (Excludes Gmail Events)"| EventObj
+              </div>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-2-step-by-step-data-flow-sequence-workflows-with-exact-file-names">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 2. Step-by-Step Data Flow & Sequence Workflows (With Exact File Names)</h2>
+<h3 class="sub-title">Workflow A: Outbound Flow — Email Composed / Replied in Salesforce (LWC ➔ Gmail)</h3>
+<p>When a sales rep composes a new email or writes an inline quick reply on the Account page LWC:</p>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor User as Sales Rep (Browser)
+    participant LWC as accountGmail.js<br/>(Lightning Web Component)
+    participant Ctrl as AccountGmailController.cls<br/>(Apex Controller)
+    participant Auth as GoogleAuthService.cls<br/>(JWT Token Service)
+    participant Meta as Google_Calendar_Setting__mdt<br/>(Custom Metadata)
+    participant GOauth as Google OAuth 2.0<br/>(https://oauth2.googleapis.com/token)
+    participant GmailSvc as GmailService.cls<br/>(MIME Builder & Callout Engine)
+    participant GAPI as Gmail REST API v1<br/>(https://gmail.googleapis.com)
+    participant EvtObj as Event (Activity Object)<br/>(Salesforce Database)
+
+    User->>LWC: Fills recipient Contact, Subject, Body in modal / quick reply & clicks "Send"
+    LWC->>Ctrl: Calls sendEmail(accountId, contactId, toAddress, ccAddress, subject, bodyHtml, threadId, inReplyTo)
+    Ctrl->>Auth: Calls resolveUserEmail() & getAccessToken(userEmail)
+    Auth->>Meta: Reads Service_Account_Email__c, Private_Key__c, Workspace_User_Email__c
+    Auth->>Auth: Constructs JWT Header & Claims (iss, sub: sumit@skg5.com, scope: gmail+calendar, exp)
+    Auth->>Auth: Signs JWT using Crypto.sign('RSA-SHA256', stringToSign, privateKeyBlob)
+    Auth->>GOauth: HTTP POST /token (grant_type=jwt-bearer)
+    GOauth-->>Auth: Returns 200 OK with Bearer access_token (cached in memory)
+    Ctrl->>GmailSvc: Calls sendMessage(userEmail, toAddress, ccAddress, subject, bodyHtml, threadId, inReplyTo)
+    GmailSvc->>GmailSvc: Constructs RFC 2822 MIME headers (From, To, Cc, Subject, In-Reply-To, Content-Type)
+    GmailSvc->>GmailSvc: Encodes MIME into URL-safe Base64URL string (base64UrlEncode)
+    GmailSvc->>GAPI: HTTP POST /gmail/v1/users/me/messages/send ({"raw": "...", "threadId": "..."})
+    GAPI-->>GmailSvc: Returns 200 OK JSON (id: "1a05d1...", threadId: "1a05d1...", labelIds: ["SENT"])
+    GmailSvc-->>Ctrl: Returns GmailMessageDTO
+    Ctrl->>EvtObj: Inserts Event record (WhatId=Account, WhoId=Contact, Gmail_Message_Id__c, Gmail_Thread_Id__c, Last_Sync_Source__c='GMAIL', Sync_Status__c='Synced')
+    Ctrl-->>LWC: Returns Event & message details
+    LWC-->>User: Closes modal, renders email in conversation view, shows success Toast
+              </div>
+            </div>
+          <h4 class="sub-sub-title">Step-by-Step Breakdown (Outbound):</h4>
+<ol class="styled-ordered-list">
+<li><strong>User Action (<code class="inline-code">accountGmail.html</code> / <code class="inline-code">accountGmail.js</code>)</strong>: User selects a contact or enters an email address, types the subject and HTML body, and clicks "Send".</li>
+<li><strong>Controller Invocation (<code class="inline-code">AccountGmailController.cls</code>)</strong>: Method <code class="inline-code">sendEmail(...)</code> resolves the Google Workspace email (<code class="inline-code">sumit@skg5.com</code>) and prepares the payload.</li>
+<li><strong>JWT Bearer Token Exchange (<code class="inline-code">GoogleAuthService.cls</code>)</strong>: Retrieves a valid OAuth 2.0 Bearer access token using the GCP Service Account private key via RSA-SHA256 signature.</li>
+<li><strong>RFC 2822 MIME Construction & Base64URL Encoding (<code class="inline-code">GmailService.cls</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Method <code class="inline-code">sendMessage(...)</code> builds the RFC 2822 MIME headers (<code class="inline-code">From</code>, <code class="inline-code">To</code>, <code class="inline-code">Cc</code>, <code class="inline-code">Subject</code>, <code class="inline-code">In-Reply-To</code>, <code class="inline-code">References</code>, <code class="inline-code">Content-Type: text/html</code>).</li>
+<li>Encodes the raw MIME body into URL-safe Base64URL (<code class="inline-code">+</code> ➔ <code class="inline-code">-</code>, <code class="inline-code">/</code> ➔ <code class="inline-code">_</code>).</li>
+<li>Calls <code class="inline-code">POST https://gmail.googleapis.com/gmail/v1/users/me/messages/send</code>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Database Persistence (<code class="inline-code">Event</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Inserts standard <code class="inline-code">Event</code> record:</li>
+<li><code class="inline-code">WhatId</code> = Account Id</li>
+<li><code class="inline-code">WhoId</code> = Contact Id</li>
+<li><code class="inline-code">Gmail_Message_Id__c</code> = Google Message ID</li>
+<li><code class="inline-code">Gmail_Thread_Id__c</code> = Google Thread ID</li>
+<li><code class="inline-code">Gmail_Direction__c</code> = <code class="inline-code">&#039;OUTBOUND&#039;</code></li>
+<li><code class="inline-code">Last_Sync_Source__c</code> = <code class="inline-code">&#039;GMAIL&#039;</code> (Loop prevention!)</li>
+<li><code class="inline-code">Sync_Status__c</code> = <code class="inline-code">&#039;Synced&#039;</code></li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>UI Refresh (<code class="inline-code">accountGmail.js</code>)</strong>: LWC displays the sent email and shows a confirmation toast.</li>
+</ol>
+<hr class="section-divider"/>
+<h3 class="sub-title">Workflow B: Inbound Real-Time Push Sync (Gmail ➔ GCP Pub/Sub ➔ Salesforce LWC)</h3>
+<p>When an email arrives in Gmail (or is sent from another Gmail client):</p>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor ExternalUser as Client / Contact
+    participant Gmail as Gmail Mailbox (sumit@skg5.com)
+    participant PubSub as GCP Cloud Pub/Sub<br/>(gmail-notifications)
+    participant Webhook as GmailWebhookRestResource.cls<br/>(/services/apexrest/gmail/webhook)
+    participant Queue as GmailSyncQueueable.cls<br/>(Async Ingestion Worker)
+    participant GmailSvc as GmailService.cls<br/>(Callout Client)
+    participant EvtObj as Event (Activity Object)<br/>(Salesforce Database)
+    participant PE as Gmail_Sync_Notification__e<br/>(Platform Event)
+    participant LWC as accountGmail.js<br/>(empApi Streaming Subscriber)
+
+    ExternalUser->>Gmail: Sends email to sumit@skg5.com
+    Gmail->>PubSub: Publishes message {"emailAddress": "sumit@skg5.com", "historyId": "1175"}
+    PubSub->>Webhook: HTTP POST /services/apexrest/gmail/webhook (Push Subscription)
+    Webhook->>Webhook: Decodes base64 payload {"emailAddress": "...", "historyId": "..."}
+    Webhook->>Queue: System.enqueueJob(new GmailSyncQueueable(userEmail, historyId))
+    Webhook-->>PubSub: Immediately returns HTTP 200 OK (handshake complete)
+    Note over Queue: Background transaction
+    Queue->>GmailSvc: Calls listHistory(userEmail, historyId) & getMessage(...)
+    GmailSvc-->>Queue: Returns added message headers, sender, recipient, snippet, threadId
+    Queue->>Queue: Matches sender/recipient against Contact.Email under Account
+    Queue->>EvtObj: Upserts Event record (Last_Sync_Source__c='GMAIL', Sync_Status__c='Synced')
+    Queue->>PE: EventBus.publish(new Gmail_Sync_Notification__e(AccountId__c, ThreadId__c, MessageId__c))
+    PE-->>LWC: empApi triggers messageCallback on /event/Gmail_Sync_Notification__e
+    LWC->>LWC: Automatically re-fetches loadThreads() & updates conversation view live
+              </div>
+            </div>
+          <h4 class="sub-sub-title">Step-by-Step Breakdown (Inbound Push Sync):</h4>
+<ol class="styled-ordered-list">
+<li><strong>Google Event Notification</strong>: When an email arrives, Gmail publishes a notification to <code class="inline-code">projects/exalted-justice-507211-v9/topics/gmail-notifications</code>.</li>
+<li><strong>GCP Pub/Sub Push Subscription</strong>: Pub/Sub delivers an HTTPS POST ping to Salesforce's public webhook endpoint.</li>
+<li><strong>REST Webhook Receiver (<code class="inline-code">GmailWebhookRestResource.cls</code>)</strong>: Decodes the base64 Pub/Sub payload, enqueues <code class="inline-code">GmailSyncQueueable</code>, and immediately responds HTTP 200 OK.</li>
+<li><strong>Delta Processing Worker (<code class="inline-code">GmailSyncQueueable.cls</code>)</strong>: Calls <code class="inline-code">GmailService.listHistory</code> and <code class="inline-code">getMessage</code> to fetch newly added emails.</li>
+<li><strong>Contact & Account Matching</strong>: Matches sender/recipient emails against Salesforce <code class="inline-code">Contact</code> records to resolve the related <code class="inline-code">AccountId</code> (<code class="inline-code">WhatId</code>) and <code class="inline-code">ContactId</code> (<code class="inline-code">WhoId</code>).</li>
+<li><strong>Event Persistence & Loop Prevention</strong>: Upserts <code class="inline-code">Event</code> records using external ID <code class="inline-code">Gmail_Message_Id__c</code> and sets <code class="inline-code">Last_Sync_Source__c = &#039;GMAIL&#039;</code>.</li>
+<li><strong>Reactive UI Update</strong>: Publishes <code class="inline-code">Gmail_Sync_Notification__e</code>. The LWC receives the platform event via CometD/WebSocket and re-renders the conversation live.</li>
+</ol>
+<hr class="section-divider"/>
+<h3 class="sub-title">Workflow C: Loop Prevention Decision Matrix</h3>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Action Initiated By</th><th>Originating System</th><th><code class="inline-code">Last_Sync_Source__c</code> Stored</th><th>Outbound Callout Allowed?</th><th>Next System Action</th></tr></thead><tbody><tr><td><strong>Sales Rep in Salesforce LWC</strong></td><td>Salesforce</td><td><code class="inline-code">&#039;GMAIL&#039;</code></td><td><strong>Yes</strong> (calls Gmail API)</td><td>Email sent via Gmail; push ping is recognized as matching existing <code class="inline-code">Gmail_Message_Id__c</code> and updates without re-sending.</td></tr><tr><td><strong>GCP Pub/Sub Webhook</strong></td><td>Google</td><td><code class="inline-code">&#039;GMAIL&#039;</code></td><td><strong>No</strong> (callout bypassed)</td><td>Queueable upserts Event with <code class="inline-code">&#039;GMAIL&#039;</code>. Outbound callouts are bypassed, preventing echo loops.</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-3-key-architecture-principles">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 3. Key Architecture Principles</h2>
+<ol class="styled-ordered-list">
+<li><strong>Enterprise Bulk User Support (Domain-Wide Delegation)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>A single Google Cloud Service Account (<code class="inline-code">105534434070602778731</code>) impersonates Google Workspace users dynamically (<code class="inline-code">sumit@skg5.com</code>), avoiding individual OAuth prompts for sales reps.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Direct GCP Pub/Sub Push Architecture</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Uses a native GCP Cloud Pub/Sub Push Subscription targeting Salesforce's Apex REST endpoint, eliminating external servers or Cloud Function middleware.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Hybrid Storage & On-Demand Thread Retrieval</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Core metadata, snippets, and direction are indexed in standard <code class="inline-code">Event</code> records for fast reporting and list rendering.</li>
+<li>Full rich HTML conversation bodies are streamed live on-demand via <code class="inline-code">GmailService.getThread</code> when clicked in the LWC, avoiding Salesforce heap limits.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Zero-Poll Reactive UI</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>The LWC uses <code class="inline-code">lightning/empApi</code> to subscribe to <code class="inline-code">/event/Gmail_Sync_Notification__e</code>, providing instantaneous UI refresh without page reloads.</li>
+</ul>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-4-technologies-tools-metadata-used">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 4. Technologies, Tools & Metadata Used</h2>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Layer</th><th>Technology / Tool</th><th>Purpose</th></tr></thead><tbody><tr><td><strong>Salesforce CLI</strong></td><td><code class="inline-code">sf</code> (v2.x)</td><td>Metadata deployments, anonymous Apex execution, unit testing</td></tr><tr><td><strong>Salesforce Backend</strong></td><td>Apex (v62.0)</td><td>JWT bearer auth, REST API callouts, Queueable delta sync, Custom REST webhook</td></tr><tr><td><strong>Salesforce Frontend</strong></td><td>Lightning Web Component (LWC)</td><td>Split-pane SLDS UI, rich HTML reader, composer modal, <code class="inline-code">empApi</code> streaming</td></tr><tr><td><strong>Security & Auth</strong></td><td>Google Service Account + JWT Bearer Flow</td><td>Server-to-server token exchange with PKCS#8 RSA-SHA256 signing</td></tr><tr><td><strong>External APIs</strong></td><td>Gmail REST API v1, GCP Cloud Pub/Sub, Google OAuth 2.0</td><td>Mailbox watch, email send, thread fetch, history delta sync</td></tr><tr><td><strong>Salesforce Schema</strong></td><td>Standard <code class="inline-code">Event</code>, Custom Metadata, Platform Events</td><td>Activity tracking, external IDs, dynamic configuration, UI notifications</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-5-implementation-steps-accomplished">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 5. Implementation Steps Accomplished</h2>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 1</span>
+                <h4>Google Cloud & Google Workspace Setup</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li><strong>APIs Enabled</strong>: Enabled <strong>Gmail API</strong> and <strong>Cloud Pub/Sub API</strong> in GCP Project <code class="inline-code">exalted-justice-507211-v9</code>.</li>
+<li><strong>Pub/Sub Topic Created</strong>: Created <code class="inline-code">projects/exalted-justice-507211-v9/topics/gmail-notifications</code> and granted <code class="inline-code">roles/pubsub.publisher</code> to <code class="inline-code">gmail-api-push@system.gserviceaccount.com</code>.</li>
+<li><strong>Workspace Delegation Scopes Added</strong>: In <code class="inline-code">admin.google.com</code> (Client ID <code class="inline-code">105534434070602778731</code>), authorized scopes:</li>
+</ol>
+<ul class="styled-list">
+<li><code class="inline-code">https://www.googleapis.com/auth/gmail.readonly</code></li>
+<li><code class="inline-code">https://www.googleapis.com/auth/gmail.send</code></li>
+<li><code class="inline-code">https://www.googleapis.com/auth/gmail.modify</code></li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Live Verification</strong>: Verified live token retrieval and <code class="inline-code">users.getProfile</code> returning 200 OK (<code class="inline-code">emailAddress: sumit@skg5.com</code>, <code class="inline-code">messagesTotal: 2</code>, <code class="inline-code">historyId: 1111</code>).</li>
+<li><strong>Remote Site Setting</strong>: Deployed <code class="inline-code">Google_Gmail_API</code> (<code class="inline-code">https://gmail.googleapis.com</code>).</li>
+</ol>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 2</span>
+                <h4>Salesforce Schema, Metadata & Security Configuration</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li><strong>Custom Fields on Standard <code class="inline-code">Event</code> (<code class="inline-code">Activity</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><code class="inline-code">Gmail_Message_Id__c</code> (Text 255, External ID)</li>
+<li><code class="inline-code">Gmail_Thread_Id__c</code> (Text 255, Indexed)</li>
+<li><code class="inline-code">Gmail_Snippet__c</code> (Text 255)</li>
+<li><code class="inline-code">Gmail_From_Address__c</code> (Text 255)</li>
+<li><code class="inline-code">Gmail_To_Address__c</code> (Text 255)</li>
+<li><code class="inline-code">Gmail_CC_Address__c</code> (Text 255)</li>
+<li><code class="inline-code">Gmail_Direction__c</code> (Picklist: <code class="inline-code">INBOUND</code>, <code class="inline-code">OUTBOUND</code>)</li>
+<li><code class="inline-code">Gmail_Date__c</code> (DateTime)</li>
+<li><code class="inline-code">Gmail_Has_Attachments__c</code> (Checkbox)</li>
+<li><code class="inline-code">Last_Sync_Source__c</code> (Picklist: updated with <code class="inline-code">&#039;GMAIL&#039;</code>)</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Custom Metadata Type (<code class="inline-code">Google_Calendar_Setting__mdt</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><code class="inline-code">Gmail_PubSub_Topic__c</code>: <code class="inline-code">projects/exalted-justice-507211-v9/topics/gmail-notifications</code></li>
+<li><code class="inline-code">Gmail_History_Id__c</code>: <code class="inline-code">1111</code></li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Platform Event (<code class="inline-code">Gmail_Sync_Notification__e</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Fields: <code class="inline-code">AccountId__c</code>, <code class="inline-code">ThreadId__c</code>, <code class="inline-code">MessageId__c</code>, <code class="inline-code">Action__c</code>, <code class="inline-code">Timestamp__c</code>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Page Layout & FLS</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Added dedicated <strong>"Gmail Details"</strong> section to <code class="inline-code">Event-Event Layout.layout-meta.xml</code>.</li>
+<li>Granted FLS to <code class="inline-code">System Administrator</code> and <code class="inline-code">Standard User</code> profiles and assigned the permission set.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 3</span>
+                <h4>Apex Integration Services Architecture</h4>
+              </div>
+          <p>Implemented in <code class="inline-code">force-app/main/default/classes/</code>:</p>
+<ol class="styled-ordered-list">
+<li><strong><code class="inline-code">GmailService.cls</code></strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><code class="inline-code">watchMailbox(...)</code> & <code class="inline-code">stopWatchMailbox(...)</code>: Push notification channel lifecycle management.</li>
+<li><code class="inline-code">listHistory(...)</code>: Incremental delta sync via numeric history ID.</li>
+<li><code class="inline-code">getMessage(...)</code> & <code class="inline-code">getThread(...)</code>: Full MIME payload and rich HTML thread parsing.</li>
+<li><code class="inline-code">sendMessage(...)</code>: RFC 2822 MIME builder with Base64URL encoding.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong><code class="inline-code">GmailWebhookRestResource.cls</code></strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><code class="inline-code">@RestResource(urlMapping=&#039;/gmail/webhook/*&#039;)</code>: Receives GCP Pub/Sub push HTTP POST notifications, decodes base64 payload, enqueues background worker, and responds HTTP 200 immediately.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong><code class="inline-code">GmailSyncQueueable.cls</code></strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Asynchronous worker matching recipients/senders against Contact records and upserting standard Event records with <code class="inline-code">Last_Sync_Source__c = &#039;GMAIL&#039;</code>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong><code class="inline-code">AccountGmailController.cls</code></strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Backend controller powering the LWC (<code class="inline-code">getAccountContext</code>, <code class="inline-code">getAccountEmailThreads</code>, <code class="inline-code">getThreadDetails</code>, <code class="inline-code">sendEmail</code>).</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong><code class="inline-code">GmailServiceTest.cls</code></strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Unit test suite with mock callout engine (<code class="inline-code">GmailHttpMock</code>): <strong>100% pass rate</strong> (6/6 tests passing) and <strong>89% org wide code coverage</strong>.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 4</span>
+                <h4>Lightning Web Component (<code class="inline-code">accountGmail</code>)</h4>
+              </div>
+          <p>Located in <code class="inline-code">force-app/main/default/lwc/accountGmail/</code>:</p>
+<ul class="styled-list">
+<li><strong><code class="inline-code">accountGmail.html</code></strong>:</li>
+<li>Header with live sync pulse badge, user email badge, sync/refresh button, and "Compose Email" trigger.</li>
+<li><strong>Left Pane (Master)</strong>: Clean real-time search input, conversation count badge, scrollable thread cards with contact tags, snippet preview, relative dates, and prominent <strong>Message Counter Badge</strong> (<code class="inline-code">1 message</code>, <code class="inline-code">2 messages</code>, etc.) that highlights and increases whenever client replies are received.</li>
+<li><strong>Right Pane (Detail)</strong>: Selected thread header with total message count badge, <strong>Chronological Conversation Stream</strong> (Message 1 on top, subsequent client/rep replies rendered sequentially below with visual connector lines and "Reply #N" pills), and an inline quick-reply composer.</li>
+<li><strong>Compose Modal</strong>: Contact picker dropdown, subject, and full rich-text editor (<code class="inline-code">lightning-input-rich-text</code>).</li>
+<li><strong><code class="inline-code">accountGmail.js</code></strong>:</li>
+<li>Injects <code class="inline-code">@api recordId</code> for Account record context.</li>
+<li>Actively synchronizes customer replies and new emails with Gmail on component load and on clicking Refresh.</li>
+<li>Renders messages in chronological order and dynamically updates the reply recipient and message counters.</li>
+<li>Subscribes via <code class="inline-code">lightning/empApi</code> to <code class="inline-code">/event/Gmail_Sync_Notification__e</code> for real-time live updates.</li>
+<li><strong><code class="inline-code">accountGmail.css</code></strong>:</li>
+<li>Modern split-pane styling, pulsing dot animation, reply counter badges (<code class="inline-code">.badge-reply-counter</code>), vertical thread connector lines, message cards with distinct Customer vs Rep styling, and AI Summary Card (<code class="inline-code">.ai-summary-card</code>, <code class="inline-code">.ai-badge-pill</code>, <code class="inline-code">.ai-executive-text</code>).</li>
+<li><strong><code class="inline-code">accountGmail.js-meta.xml</code></strong>:</li>
+<li>Targeted to <code class="inline-code">Account</code> on <code class="inline-code">lightning__RecordPage</code>, <code class="inline-code">lightning__AppPage</code>, and <code class="inline-code">lightning__HomePage</code>.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 14</span>
+                <h4>Calendar Isolation from Email Events & Branded Meeting Invitations</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>The Problem</strong>:</li>
+</ul>
+<p>  In Salesforce, both Gmail email conversation turns and Google Calendar meetings are persisted under the standard <code class="inline-code">Event</code> object (<code class="inline-code">Activity</code>). Previously, <code class="inline-code">AccountCalendarController.getAccountMeetings</code> queried:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">APEX</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-apex">  SELECT Id, Subject, Description, StartDateTime, EndDateTime ... FROM Event 
+  WHERE WhatId = :accountId OR WhoId IN :contactIds</code></pre>
+            </div>
+          <p>  Because email turns created by the Gmail integration set <code class="inline-code">WhatId = accountId</code> and <code class="inline-code">WhoId = contactId</code>, <strong>every single email sent or received was being returned and rendered as a scheduled meeting</strong> inside the <code class="inline-code">accountGoogleCalendar</code> LWC. Active email conversations flooded the calendar component with phantom "meetings".</p>
+<ul class="styled-list">
+<li><strong>Calendar Isolation Implementation (<code class="inline-code">AccountCalendarController.cls</code>)</strong>:</li>
+<li>Updated <code class="inline-code">getAccountMeetings</code> with strict SOQL filtering:</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">APEX</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-apex">    WHERE (WhatId = :accountId OR WhoId IN :contactIds)
+      AND Gmail_Thread_Id__c = null
+      AND Gmail_Direction__c = null
+    ORDER BY StartDateTime ASC</code></pre>
+            </div>
+          <ul class="styled-list">
+<li>Guarantees that email conversation events are 100% excluded from the calendar view. Only real calendar meetings (with <code class="inline-code">Google_Event_Id__c != null</code> or manual events) are displayed.</li>
+<li><strong>Branded Meeting Invitation Subject (<code class="inline-code">AccountCalendarController.cls</code> & <code class="inline-code">GoogleCalendarService.cls</code>)</strong>:</li>
+<li><strong>The Problem</strong>: When Google Calendar API created an event with attendees, Google's automated mailer sent out an invitation from <code class="inline-code">sumit@skg5.com</code>. Because that address is outside the recipient's personal contacts, Gmail flagged the email and prepended <code class="inline-code">&quot;Invitation from an unknown sender: ...&quot;</code> in the subject line.</li>
+<li><strong>The Fix</strong>:</li>
+</ul>
+<ol class="styled-ordered-list">
+<li>In <code class="inline-code">GoogleCalendarService.createEvent</code>: Appended <code class="inline-code">?sendUpdates=none</code> to the Google Calendar API call (<code class="inline-code">/calendars/primary/events?sendUpdates=none</code>). This suppresses Google's untrusted, generic notification email while still placing the event and Meet link onto the calendar.</li>
+<li>In <code class="inline-code">AccountCalendarController.createMeeting</code>: Added automated dispatch of a branded invitation email via <code class="inline-code">sendMeetingInvitation</code>:</li>
+</ol>
+<ul class="styled-list">
+<li><strong>Email Subject</strong>: <code class="inline-code">Invitation from CSM-Teqfoucs</code></li>
+<li><strong>Sender Display Name</strong>: <code class="inline-code">CSM-Teqfocus</code></li>
+<li><strong>HTML Body</strong>: Clean, responsive SLDS-styled invitation card containing Meeting Subject, Start/End Date & Time, "Join Google Meet" action button, agenda/description, and CSM team signature.</li>
+<li><strong>Limit Bypass</strong>: Dynamically queries active <code class="inline-code">User</code> records matching attendee emails to send via <code class="inline-code">mail.setTargetObjectId(user.Id)</code>, bypassing Developer Edition 15/day SingleEmail quotas.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 13</span>
+                <h4>Dedicated Whole Thread Summary Section for CSM Quick Brief</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>The Requirement</strong>:</li>
+</ul>
+<p>  CSMs opening an Account record need to immediately grasp the complete background, progression, and current status of an email thread without reading through every individual message or having the summary truncated with ellipses (<code class="inline-code">...</code>).</p>
+<ul class="styled-list">
+<li><strong>Backend Narrative Generation (<code class="inline-code">GmailAIService.cls</code> & <code class="inline-code">AccountGmailController.cls</code>)</strong>:</li>
+<li>Added <code class="inline-code">@AuraEnabled public String wholeThreadSummary { get; set; }</code> to <code class="inline-code">GmailAIService.ThreadSummaryResult</code>.</li>
+<li>Upgraded <code class="inline-code">generateFallbackSummary</code> and Gemini prompting to build an end-to-end narrative covering:</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Thread Context</strong>: Total exchanges and initial topic.</li>
+<li><strong>Inception</strong>: Who started the communication and initial proposal.</li>
+<li><strong>Progression</strong>: Chronological progression through all back-and-forth turns.</li>
+<li><strong>Current Status</strong>: Who spoke last, what was stated, and what follow-up is expected.</li>
+</ol>
+<ul class="styled-list">
+<li>Linked database cache <code class="inline-code">Gmail_Thread_Summary__c.Executive_Summary__c</code> to populate <code class="inline-code">res.wholeThreadSummary</code>.</li>
+<li><strong>Dedicated Whole Thread Summary LWC UI (<code class="inline-code">accountGmail.html</code>, <code class="inline-code">.css</code>, <code class="inline-code">.js</code>)</strong>:</li>
+<li>Positioned a dedicated, standalone <strong><code class="inline-code">[WHOLE THREAD SUMMARY]</code></strong> section directly below the header bar in <code class="inline-code">.ai-summary-card</code>.</li>
+<li>Styled with a subtle slate gradient (<code class="inline-code">#f8fafc</code> to <code class="inline-code">#f1f5f9</code>), left blue accent indicator (<code class="inline-code">3px solid #0284c7</code>), uppercase summary tag, and non-truncated high-readability typography (<code class="inline-code">.csm-summary-text</code>).</li>
+<li>Added <code class="inline-code">aiModelLabel</code> and <code class="inline-code">aiGeneratedTimeLabel</code> tags for transparency.</li>
+<li>Preserved the expandable drawer (<code class="inline-code">&quot;View Breakdown&quot;</code>) below the summary for turn-by-turn communication history and concrete next action items.</li>
+<li><strong>Zero Modification to Email Sending / Threading Pipeline</strong>:</li>
+<li>Purely focused on the AI summary generation and UI presentation layer.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 12</span>
+                <h4>Direct Personal Email Delivery, Conversation History Threading & RFC 2822 Standards</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Developer Edition SingleEmail Limit Bypass</strong>:</li>
+<li>Identified root cause of non-delivery to personal email: Developer Edition orgs enforce a strict 15/day external email limit (<code class="inline-code">SINGLE_EMAIL_LIMIT_EXCEEDED</code>).</li>
+<li>Implemented dynamic active <code class="inline-code">User</code> matching in <code class="inline-code">AccountGmailController.sendEmail</code> and <code class="inline-code">AccountGmailInboundHandler.cls</code>.</li>
+<li>When sending to an email belonging to an active Salesforce User (e.g. <code class="inline-code">skgsummo5@gmail.com</code> or <code class="inline-code">skgsumit5@gmail.com</code>), the message is dispatched using <code class="inline-code">mail.setTargetObjectId(user.Id)</code>. In Salesforce, internal User emails <strong>do not count</strong> against the 15/day quota, guaranteeing 100% instant delivery without quota errors.</li>
+<li><strong>Direct Addressing (<code class="inline-code">To: CSM_Email__c</code>)</strong>:</li>
+<li>When the CSM sends an outbound email from the LWC, an explicit, directly addressed copy is sent to the CSM's personal email inbox (<code class="inline-code">To: Account.CSM_Email__c</code>), ensuring personal mail clients index it directly in the Inbox rather than Sent/BCC.</li>
+<li><strong>Full Conversation History Quoting (<code class="inline-code">AccountGmailInboundHandler.buildThreadedBody</code>)</strong>:</li>
+<li>Reconstructs the complete chronological email history from prior <code class="inline-code">Event</code> records.</li>
+<li>Wrapped inside a responsive, email-friendly <code class="inline-code">&lt;div class=&quot;gmail_quote&quot;&gt;</code> block with distinct visual cards:</li>
+<li><strong>Client Messages</strong>: Highlighted with soft green left accent (<code class="inline-code">#22c55e</code>).</li>
+<li><strong>CSM Messages</strong>: Highlighted with Salesforce blue left accent (<code class="inline-code">#0176d3</code>).</li>
+<li>Gmail automatically collapses this section under the ellipsis/trimmed content toggle, preserving clean reading while enabling full history access on-demand.</li>
+<li><strong>Standard RFC 2822 Threading Headers (<code class="inline-code">AccountGmailInboundHandler.getThreadHeaders</code>)</strong>:</li>
+<li>Injects deterministic <code class="inline-code">Message-ID</code>, <code class="inline-code">In-Reply-To</code>, and <code class="inline-code">References</code> headers:</li>
+<li><code class="inline-code">Message-ID: &lt;msg_[id]@[threadId].salesforce.com&gt;</code></li>
+<li><code class="inline-code">In-Reply-To: &lt;msg_[previousId]@[threadId].salesforce.com&gt;</code></li>
+<li><code class="inline-code">References: &lt;msg_[firstId]@[threadId].salesforce.com&gt; ...</code></li>
+<li>Forces Gmail, Apple Mail, and Outlook to thread all turns into a single unified email conversation in the user's personal email client.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 11</span>
+                <h4>Domain-Free CSM & Client Bidirectional Threading (Zero GCP Admin Dependency)</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Complete Independence from GCP Admin & Domain Delegation</strong>:</li>
+<li>Removed all dependencies on Google Workspace Domain-Wide Delegation, service accounts, and unverified domains (<code class="inline-code">skg5.com</code>).</li>
+<li>Replaced with native Salesforce dispatch via <code class="inline-code">Messaging.SingleEmailMessage</code> and <code class="inline-code">Messaging.InboundEmailHandler</code>.</li>
+<li><strong>Dynamic CSM Persona (<code class="inline-code">Account.CSM_Email__c</code>)</strong>:</li>
+<li>Reads the assigned CSM email directly from the Account record (<code class="inline-code">Account.CSM_Email__c</code>).</li>
+<li>Outbound emails are sent with:</li>
+<li><strong>From Display Name</strong>: CSM / Account Owner name.</li>
+<li><strong>Reply-To</strong>: Salesforce Inbound Email Service (<code class="inline-code">csm-reply@...</code>).</li>
+<li><strong>Bidirectional Thread Continuity</strong>:</li>
+<li><strong>Client Replies</strong>: Routed to Salesforce Inbound Email Service ➔ parsed ➔ <code class="inline-code">INBOUND</code> Event logged ➔ LWC updated via <code class="inline-code">empApi</code> ➔ pure reply forwarded to CSM's personal inbox with RFC thread headers.</li>
+<li><strong>CSM Replies from Personal Email</strong>: Routed to Salesforce Inbound Email Service ➔ recognized as CSM ➔ <code class="inline-code">OUTBOUND</code> Event logged ➔ forwarded directly to Client ➔ LWC updated live.</li>
+<li><strong>100% Test Suite Verification</strong>:</li>
+<li><code class="inline-code">GmailServiceTest</code> achieves 17/17 passing tests (100% pass rate) with 88% code coverage.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 10</span>
+                <h4>Compact Non-Congested UI, Thread Quick Summaries & Triple-Layer Real-Time Sync</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Compact, Airy UI Architecture (<code class="inline-code">accountGmail.html</code> & <code class="inline-code">accountGmail.css</code>)</strong>:</li>
+<li>Eliminated vertical screen congestion by replacing the bulky AI card with a <strong>sleek, 42px AI Summary Bar</strong> (<code class="inline-code">.ai-summary-bar</code>).</li>
+<li>By default, the top bar displays a punchy, 1-2 sentence executive overview of what the parties are currently discussing.</li>
+<li>An expandable drawer (<code class="inline-code">.ai-details-drawer</code>) is available on-demand via <strong>"View Breakdown"</strong>, keeping the conversation stream spacious and readable.</li>
+<li>De-congested message cards: modern borders, distinct sender styling (Client green accent vs CSM blue accent), generous line-heights, and clear timestamps.</li>
+<li><strong>Instant Thread Quick-Summaries</strong>:</li>
+<li>Added <code class="inline-code">quickSummary</code> to <code class="inline-code">ThreadSummaryDTO</code> in <code class="inline-code">AccountGmailController.cls</code>.</li>
+<li>Left-pane conversation cards display a clean 1-line summary preview (e.g. <code class="inline-code">4 msgs • Client replied: &quot;Hii Summo, Thanks for the help...&quot;</code>).</li>
+<li>Auto-selection: When the component loads, it immediately selects the first conversation thread, guaranteeing that messages and summaries appear instantly without a blank state.</li>
+<li>Unified Server Call: <code class="inline-code">AccountGmailController.getThreadDetails</code> bundles both thread messages and AI summary into a single roundtrip, eliminating loading latency.</li>
+<li><strong>Triple-Layer Real-Time Synchronization Engine (<code class="inline-code">accountGmail.js</code>)</strong>:</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>CometD / Platform Event (<code class="inline-code">empApi</code>)</strong>: Listens to <code class="inline-code">/event/Gmail_Sync_Notification__e</code> with normalized 15-character Account ID matching.</li>
+<li><strong>Tab Visibility & Window Focus (<code class="inline-code">visibilitychange</code>, <code class="inline-code">focus</code>)</strong>: Automatically triggers a silent sync the instant the user returns from Gmail to Salesforce.</li>
+<li><strong>Gentle Background Polling (<code class="inline-code">setInterval</code>)</strong>: Auto-syncs every 10 seconds to catch inbound replies even if network or CometD connections drop.</li>
+</ol>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 9</span>
+                <h4>Automated Quoted Email Reply Stripping & Multi-Turn Conversation Summarization</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Intelligent Quote & History Stripping (<code class="inline-code">stripQuotedReply</code>)</strong>:</li>
+<li>Implemented across <code class="inline-code">AccountGmailInboundHandler.cls</code>, <code class="inline-code">AccountGmailController.cls</code>, <code class="inline-code">GmailAIService.cls</code>, and <code class="inline-code">accountGmail.js</code>.</li>
+<li>Automatically strips:</li>
+<li>Gmail / iOS header trails: <code class="inline-code">On [Date/Time], [Sender] wrote:</code></li>
+<li>Outlook header blocks: <code class="inline-code">-----Original Message-----</code>, <code class="inline-code">From: ... Sent: ... To: ...</code></li>
+<li>Quoted citation blocks: <code class="inline-code">&gt;</code> and <code class="inline-code">&amp;gt;</code> lines.</li>
+<li>HTML wrappers: <code class="inline-code">&lt;div class=&quot;gmail_quote&quot;&gt;</code>, <code class="inline-code">&lt;blockquote&gt;</code>, <code class="inline-code">&lt;div id=&quot;divRplyFwdMsg&quot;&gt;</code>.</li>
+<li>Preserves 100% pure message content in the database (<code class="inline-code">Event.Description</code>), message cards, and snippets.</li>
+<li><strong>Refined Multi-Turn AI Conversation Summarizer (<code class="inline-code">GmailAIService.cls</code>)</strong>:</li>
+<li>Synthesizes every message in the thread chronologically (from initial outreach to subsequent replies).</li>
+<li><strong>Conversation Overview & Current Topic</strong>: Explains what initiated the dialogue, the back-and-forth exchanges, and what the parties are currently discussing.</li>
+<li><strong>Communication History & Discussion Points</strong>: Step-by-step breakdown of every exchange (<code class="inline-code">Message 1 — CSM / Rep (Date): &quot;...&quot;</code>, <code class="inline-code">Message 2 — Client (Date): &quot;...&quot;</code>, <code class="inline-code">Current Status</code>).</li>
+<li><strong>Action Items & Next Steps</strong>: Actionable recommendations tailored to the client's newest reply.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 8</span>
+                <h4>Salesforce Inbound Email Service & Client Reply Ingestion Engine</h4>
+              </div>
+          <p>Located in <code class="inline-code">AccountGmailInboundHandler.cls</code>:</p>
+<ul class="styled-list">
+<li><strong><code class="inline-code">Messaging.InboundEmailHandler</code> Implementation</strong>:</li>
+<li>Implements <code class="inline-code">handleInboundEmail(email, envelope)</code>.</li>
+<li>Automatically matches the sender (<code class="inline-code">email.fromAddress</code>) against Contact records in Salesforce.</li>
+<li>Resolves Account ID and extracts the Thread ID from email subject or message body.</li>
+<li>Creates an <code class="inline-code">INBOUND</code> Event record under the Account and Contact.</li>
+<li>Forwards a notification copy to the Account's <code class="inline-code">CSM_Email__c</code>.</li>
+<li>Publishes <code class="inline-code">Gmail_Sync_Notification__e</code> to notify the LWC in real-time via <code class="inline-code">empApi</code>.</li>
+<li><strong>Instant Client Reply Testing Simulator</strong>:</li>
+<li>Added <code class="inline-code">AccountGmailController.simulateInboundReply(accountId, contactId, threadId, replyText)</code>.</li>
+<li>Added <strong>"Simulate Client Reply"</strong> button and interactive modal in <code class="inline-code">accountGmail</code> LWC.</li>
+<li>Allows instantaneous testing and demonstration of inbound client replies appearing below Message #1 with thread connector lines, incrementing the counter badge (e.g. from <code class="inline-code">1 message</code> to <code class="inline-code">2 messages</code>), and automatically updating the AI summary.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 7</span>
+                <h4>Account CSM Email & Domain-Free Architecture</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Custom Field <code class="inline-code">Account.CSM_Email__c</code></strong>:</li>
+<li>Added <code class="inline-code">CSM_Email__c</code> (Type: <code class="inline-code">Email</code>) on standard <code class="inline-code">Account</code> object.</li>
+<li>Stores the actual email address of the Customer Success Manager (CSM) responsible for the account (e.g. <code class="inline-code">skgsummo5@gmail.com</code>).</li>
+<li><strong>Zero Domain Dependency</strong>:</li>
+<li>Completely removes the dependency on unverified/dummy test domains (e.g. <code class="inline-code">skg5.com</code>).</li>
+<li>When sending an email from the Account LWC, Salesforce dispatches via <strong><code class="inline-code">Messaging.SingleEmailMessage</code></strong>:</li>
+<li><strong>Recipient (<code class="inline-code">To</code>)</strong>: Contact's email address.</li>
+<li><strong>Reply-To</strong>: Account's <code class="inline-code">CSM_Email__c</code>.</li>
+<li><strong>From Display</strong>: Account Owner / CSM Team.</li>
+<li><strong>Guaranteed Reply Delivery</strong>: When the client clicks "Reply" in their email client, the message is routed directly to the CSM's real inbox with <strong>zero bounces</strong>.</li>
+<li><strong>Seamless UI & Thread Consistency</strong>:</li>
+<li>Displays the active <strong>CSM Email</strong> badge in the component header (<code class="inline-code">CSM: skgsummo5@gmail.com</code>).</li>
+<li>Shows the <strong>From (CSM)</strong> sender banner inside the Compose modal.</li>
+<li>Preserves full conversation stream rendering, chronological sorting, message counters, and AI summarization with caching.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 6</span>
+                <h4>AI Conversation Thread Summarization & Smart Caching</h4>
+              </div>
+          <p>Located in <code class="inline-code">GmailAIService.cls</code> & <code class="inline-code">Gmail_Thread_Summary__c</code>:</p>
+<ul class="styled-list">
+<li><strong>Chronological Full-Thread Ingestion</strong>:</li>
+<li>Reads every message in the thread in chronological order (Message 1 ➔ Message 2 ➔ Message N).</li>
+<li>Cleans HTML markup, formats a conversation transcript with participant roles (Rep vs Client), and constructs an executive prompt.</li>
+<li><strong>Structured Output</strong>:</li>
+<li><strong>Executive Overview</strong>: 1–2 sentence high-level overview of the thread's purpose and latest status.</li>
+<li><strong>Key Discussion Points</strong>: Bulleted list of agreements, submitted proposals, and discussion highlights.</li>
+<li><strong>Next Steps & Action Items</strong>: Specific follow-up items, unanswered questions, or meeting requests for the rep.</li>
+<li><strong>Smart Database Caching (<code class="inline-code">Gmail_Thread_Summary__c</code>)</strong>:</li>
+<li>Stores <code class="inline-code">Executive_Summary__c</code>, <code class="inline-code">Key_Points__c</code>, <code class="inline-code">Action_Items__c</code>, <code class="inline-code">Message_Count__c</code>, and <code class="inline-code">Latest_Message_Id__c</code>.</li>
+<li><strong>Cache HIT</strong>: When opening a thread whose message count has not changed, the stored summary is loaded in <strong>0ms</strong> ($0 AI callout cost).</li>
+<li><strong>Automatic Cache Invalidation</strong>: When a new email or client reply arrives (<code class="inline-code">currentMessageCount &gt; Message_Count__c</code> or new <code class="inline-code">Latest_Message_Id__c</code>), the engine automatically invalidates the cache, feeds the new messages to the AI, updates the database record, and displays the fresh summary.</li>
+<li><strong>On-Demand Regeneration</strong>: Sales reps can click the "Regenerate" button on the AI card at any time to force a fresh analysis.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 5</span>
+                <h4>Live Verification & Testing Results</h4>
+              </div>
+          <div class="table-responsive"><table class="styled-table"><thead><tr><th>Test Stage</th><th>Operation</th><th>Verified Outcome</th></tr></thead><tbody><tr><td><strong>1. OAuth Token Exchange</strong></td><td><code class="inline-code">GoogleAuthService.getAccessToken(&#039;sumit@skg5.com&#039;)</code></td><td><strong>SUCCESS</strong>: Bearer access token retrieved with Gmail scopes via RSA-SHA256 JWT assertion.</td></tr><tr><td><strong>2. Mailbox Watch Registration</strong></td><td><code class="inline-code">GmailService.watchMailbox(&#039;sumit@skg5.com&#039;, topic)</code></td><td><strong>SUCCESS</strong>: Registered with GCP Pub/Sub topic <code class="inline-code">projects/exalted-justice-507211-v9/topics/gmail-notifications</code>. History ID: <code class="inline-code">1111</code>.</td></tr><tr><td><strong>3. Outbound Email Sending</strong></td><td><code class="inline-code">AccountGmailController.sendEmail(...)</code></td><td><strong>SUCCESS</strong>: Sent live RFC 2822 Base64URL email via Gmail API to contact; created Event (<code class="inline-code">00Ufj000004zxC9EAI</code>) with <code class="inline-code">Gmail_Message_Id__c = 1a05d1be4d1954a3</code> and <code class="inline-code">Last_Sync_Source__c = &#039;GMAIL&#039;</code>.</td></tr><tr><td><strong>4. Live Thread Retrieval</strong></td><td><code class="inline-code">AccountGmailController.getThreadDetails(...)</code></td><td><strong>SUCCESS</strong>: Fetched full rich HTML conversation thread live from Gmail API (<code class="inline-code">1a05d1be4d1954a3</code>).</td></tr><tr><td><strong>5. Account Thread Summary</strong></td><td><code class="inline-code">AccountGmailController.getAccountEmailThreads(...)</code></td><td><strong>SUCCESS</strong>: Retrieved thread summaries grouped by <code class="inline-code">Gmail_Thread_Id__c</code> with direction and contact names.</td></tr><tr><td><strong>6. Apex Test Suite</strong></td><td><code class="inline-code">GmailServiceTest</code> & <code class="inline-code">GoogleCalendarTest</code></td><td><strong>SUCCESS</strong>: All 13 unit tests passed with 100% pass rate and 89% org wide code coverage.</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-6-directory-file-structure">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 6. Directory & File Structure</h2>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">CODE</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-">force-app/main/default/
+├── classes/
+│   ├── AccountCalendarController.cls              # Calendar backend: meeting scheduling, queries with email isolation
+│   ├── AccountCalendarController.cls-meta.xml
+│   ├── AccountGmailController.cls                 # Gmail LWC backend: thread queries, email send, user-targeted delivery
+│   ├── AccountGmailController.cls-meta.xml
+│   ├── AccountGmailInboundHandler.cls             # Salesforce Inbound Email Service: reply parsing, routing, threading
+│   ├── AccountGmailInboundHandler.cls-meta.xml
+│   ├── GmailAIService.cls                         # Gemini AI + smart fallback multi-turn &amp; whole-thread summarizer
+│   ├── GmailAIService.cls-meta.xml
+│   ├── GmailService.cls                           # Gmail REST API callout engine &amp; MIME builder
+│   ├── GmailService.cls-meta.xml
+│   ├── GmailServiceTest.cls                       # Full test suite for Gmail, Inbound, AI, and Personal Reply flows (17/17 pass)
+│   ├── GmailServiceTest.cls-meta.xml
+│   ├── GmailSyncQueueable.cls                     # Async delta worker for history sync &amp; contact matching
+│   ├── GmailSyncQueueable.cls-meta.xml
+│   ├── GmailWebhookRestResource.cls               # Apex REST Webhook for GCP Pub/Sub push notifications
+│   ├── GmailWebhookRestResource.cls-meta.xml
+│   ├── GoogleAuthService.cls                      # RSA-SHA256 JWT bearer token exchange with Google OAuth 2.0
+│   ├── GoogleAuthService.cls-meta.xml
+│   ├── GoogleCalendarQueueable.cls                # Queueable worker for Google Calendar delta sync
+│   ├── GoogleCalendarQueueable.cls-meta.xml
+│   ├── GoogleCalendarService.cls                  # Google Calendar API v3 service (create, patch, delete, watch)
+│   ├── GoogleCalendarService.cls-meta.xml
+│   ├── GoogleCalendarTest.cls                     # Calendar unit test suite (9/9 pass, 94% coverage)
+│   ├── GoogleCalendarTest.cls-meta.xml
+│   ├── GoogleCalendarWebhookRestResource.cls      # Calendar push webhook receiver
+│   └── GoogleCalendarWebhookRestResource.cls-meta.xml
+├── customMetadata/
+│   └── Google_Calendar_Setting.Default_Setting.md-meta.xml
+├── layouts/
+│   └── Event-Event Layout.layout-meta.xml
+├── lwc/
+│   ├── accountGmail/                              # Master-Detail Gmail Conversation &amp; AI Summary Component
+│   │   ├── accountGmail.css
+│   │   ├── accountGmail.html
+│   │   ├── accountGmail.js
+│   │   └── accountGmail.js-meta.xml
+│   └── accountGoogleCalendar/                     # Google Calendar Component (isolated from email events)
+│       ├── accountGoogleCalendar.css
+│       ├── accountGoogleCalendar.html
+│       ├── accountGoogleCalendar.js
+│       └── accountGoogleCalendar.js-meta.xml
+├── objects/
+│   ├── Account/
+│   │   └── fields/
+│   │       └── CSM_Email__c.field-meta.xml        # Dynamic Customer Success Manager email address
+│   ├── Activity/
+│   │   └── fields/
+│   │       ├── Gmail_CC_Address__c.field-meta.xml
+│   │       ├── Gmail_Date__c.field-meta.xml
+│   │       ├── Gmail_Direction__c.field-meta.xml
+│   │       ├── Gmail_From_Address__c.field-meta.xml
+│   │       ├── Gmail_Has_Attachments__c.field-meta.xml
+│   │       ├── Gmail_Message_Id__c.field-meta.xml
+│   │       ├── Gmail_Snippet__c.field-meta.xml
+│   │       ├── Gmail_Thread_Id__c.field-meta.xml
+│   │       ├── Gmail_To_Address__c.field-meta.xml
+│   │       ├── Google_ETag__c.field-meta.xml
+│   │       ├── Google_Event_Id__c.field-meta.xml
+│   │       ├── Google_Meet_Link__c.field-meta.xml
+│   │       ├── Last_Sync_Source__c.field-meta.xml
+│   │       └── Sync_Status__c.field-meta.xml
+│   ├── Calendar_Sync_Notification__e/
+│   │   ├── Calendar_Sync_Notification__e.object-meta.xml
+│   │   └── fields/
+│   │       ├── AccountId__c.field-meta.xml
+│   │       ├── Action__c.field-meta.xml
+│   │       ├── EventId__c.field-meta.xml
+│   │       └── Timestamp__c.field-meta.xml
+│   ├── Gmail_Sync_Notification__e/
+│   │   ├── Gmail_Sync_Notification__e.object-meta.xml
+│   │   └── fields/
+│   │       ├── AccountId__c.field-meta.xml
+│   │       ├── Action__c.field-meta.xml
+│   │       ├── MessageId__c.field-meta.xml
+│   │       ├── ThreadId__c.field-meta.xml
+│   │       └── Timestamp__c.field-meta.xml
+│   ├── Gmail_Thread_Summary__c/                   # AI response cache object
+│   │   ├── Gmail_Thread_Summary__c.object-meta.xml
+│   │   └── fields/
+│   │       ├── Account__c.field-meta.xml
+│   │       ├── Action_Items__c.field-meta.xml
+│   │       ├── Executive_Summary__c.field-meta.xml
+│   │       ├── Key_Points__c.field-meta.xml
+│   │       ├── Latest_Message_Id__c.field-meta.xml
+│   │       ├── Message_Count__c.field-meta.xml
+│   │       ├── Model_Used__c.field-meta.xml
+│   │       └── Thread_Id__c.field-meta.xml
+│   └── Google_Calendar_Setting__mdt/
+│       └── fields/
+│           ├── Client_Id__c.field-meta.xml
+│           ├── Gmail_History_Id__c.field-meta.xml
+│           ├── Gmail_PubSub_Topic__c.field-meta.xml
+│           ├── Private_Key__c.field-meta.xml
+│           ├── Service_Account_Email__c.field-meta.xml
+│           └── Workspace_User_Email__c.field-meta.xml
+├── permissionsets/
+│   └── Google_Calendar_Integration_User.permissionset-meta.xml
+└── remoteSiteSettings/
+    ├── Google_Calendar_API.remoteSite-meta.xml
+    └── Google_Gmail_API.remoteSite-meta.xml</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-7-how-to-use-on-the-account-record-page">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 7. How to Use on the Account Record Page</h2>
+<ol class="styled-ordered-list">
+<li>Log in to Salesforce (<code class="inline-code">learn_dc</code>).</li>
+<li>Open any <strong>Account</strong> record (e.g., Alex Hales, Ben Stokes, Acme Corp).</li>
+<li>Ensure the <strong><code class="inline-code">CSM_Email__c</code></strong> field is populated on the Account (e.g. <code class="inline-code">skgsummo5@gmail.com</code>).</li>
+<li>Click the <strong>Gear icon (⚙️) > Edit Page</strong> to open the <strong>Lightning App Builder</strong>.</li>
+<li>Place the components on the page layout:</li>
+</ol>
+<ul class="styled-list">
+<li><strong>Account Gmail (<code class="inline-code">accountGmail</code>)</strong>: Drag to a dedicated "Gmail" tab or the main activity region.</li>
+<li><strong>Account Google Calendar (<code class="inline-code">accountGoogleCalendar</code>)</strong>: Drag to a dedicated "Meetings / Calendar" tab.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li>Click <strong>Save</strong> and <strong>Activate</strong>.</li>
+<li><strong>Daily Operational Workflow</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><strong>Review Whole Thread Narrative</strong>: Opening an email thread renders the prominent <code class="inline-code">[WHOLE THREAD SUMMARY]</code> card, providing a 3-to-4 sentence narrative covering the origin, progression, latest statement, and pending next action.</li>
+<li><strong>Read Turn-by-Turn History</strong>: Click "View Breakdown" to see chronological discussion points and recommended action items.</li>
+<li><strong>Compose & Reply</strong>: Send outbound messages directly from Salesforce. An explicit copy is delivered directly to the CSM's personal Gmail inbox, properly threaded using RFC 2822 standard headers.</li>
+<li><strong>Personal Email Replies</strong>: If the CSM replies directly from their personal Gmail app/web, Salesforce receives the reply, logs it as an <code class="inline-code">OUTBOUND</code> Event, forwards it to the client, and updates the LWC live.</li>
+<li><strong>Schedule Meetings</strong>: Click "Schedule Meeting" on the Calendar LWC. A clean, branded invitation email is dispatched to attendees with subject <strong><code class="inline-code">Invitation from CSM-Teqfoucs</code></strong>, and Google Meet video links are generated without triggering Google's untrusted sender warning.</li>
+<li><strong>Clean Calendar State</strong>: Active email conversations will never appear on the calendar, ensuring your meetings list remains strictly focused on scheduled appointments.</li>
+</ul>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-8-verification-test-suite-summary">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 8. Verification & Test Suite Summary</h2>
+<p>All integration suites run with a 100% pass rate in the target org <code class="inline-code">learn_dc</code>:</p>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Test Suite Class</th><th>Tests Ran</th><th>Outcome</th><th>Pass Rate</th><th>Key Classes Covered</th></tr></thead><tbody><tr><td><strong><code class="inline-code">GmailServiceTest.cls</code></strong></td><td><strong>17</strong></td><td><strong>Passed</strong></td><td><strong>100%</strong></td><td><code class="inline-code">AccountGmailController</code> (88%), <code class="inline-code">GmailService</code> (90%), <code class="inline-code">GmailSyncQueueable</code> (86%), <code class="inline-code">GmailAIService</code> (57%), <code class="inline-code">AccountGmailInboundHandler</code> (72%), <code class="inline-code">GoogleAuthService</code> (73%)</td></tr><tr><td><strong><code class="inline-code">GoogleCalendarTest.cls</code></strong></td><td><strong>9</strong></td><td><strong>Passed</strong></td><td><strong>100%</strong></td><td><code class="inline-code">AccountCalendarController</code> (94%), <code class="inline-code">GoogleCalendarService</code> (93%), <code class="inline-code">GoogleCalendarQueueable</code> (96%), <code class="inline-code">GoogleCalendarWebhookRestResource</code> (77%)</td></tr><tr><td><strong>Org-Wide Code Coverage</strong></td><td>—</td><td>—</td><td><strong>82%</strong></td><td>Standard meets & exceeds Salesforce 75% production deployment threshold.</td></tr></tbody></table></div>
+</section>
+
+  </div>
+
+  <a href="#" class="back-to-top">↑ Top</a>
+
+  <footer>
+    <strong>Salesforce Lightning Platform • Enterprise AI Integration Guide</strong><br/>
+    Internal Engineering Reference & Operational Playbook • Org: <code>learn_dc</code>
+  </footer>
+
+  <script>
+    function copyCode(btn) {
+      const container = btn.closest('.code-container');
+      const code = container.querySelector('code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const origText = btn.innerText;
+        btn.innerText = '✓ Copied!';
+        btn.style.background = '#2EB67D';
+        btn.style.borderColor = '#2EB67D';
+        btn.style.color = '#ffffff';
+        setTimeout(() => {
+          btn.innerText = origText;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 2000);
+      });
+    }
+
+    // Scroll Progress & Active Tab Highlighting
+    window.addEventListener('scroll', () => {
+      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / height) * 100;
+      document.getElementById('progress-bar').style.width = scrolled + '%';
+
+      const sections = document.querySelectorAll('.section-card');
+      const navTabs = document.querySelectorAll('.nav-tab');
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        if (winScroll >= sectionTop - 140) {
+          current = section.getAttribute('id');
+        }
+      });
+      navTabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.getAttribute('href') === '#' + current) {
+          tab.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+  

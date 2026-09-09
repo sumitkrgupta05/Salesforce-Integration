@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snowflake Model Context Protocol (MCP) Guide &amp; Implementation Blueprint | Salesforce Enterprise Architecture</title>
+  <!-- Mermaid JS for Dynamic Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      securityLevel: 'loose',
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+      sequence: { useMaxWidth: true, showSequenceNumbers: true }
+    });
+  </script>
+  <style>
+    :root {
+      --sf-blue: #0176D3;
+      --sf-dark-blue: #0b5cab;
+      --sf-navy: #032d60;
+      --slack-aubergine: #4A154B;
+      --slack-green: #2EB67D;
+      --slack-yellow: #ECB22E;
+      --slack-red: #E01E5A;
+      --slack-blue: #36C5F0;
+      --gcp-blue: #4285F4;
+      --snowflake-blue: #29B5E8;
+      --gmail-red: #EA4335;
+      --cal-blue: #1A73E8;
+      --bg-light: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --border-color: #e2e8f0;
+      --code-bg: #1e1e24;
+      --radius-lg: 12px;
+      --radius-md: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-light);
+      color: var(--text-main);
+      line-height: 1.68;
+      padding-bottom: 80px;
+    }
+
+    /* Scroll progress indicator */
+    #progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--sf-blue), var(--slack-green), var(--slack-blue));
+      width: 0%;
+      z-index: 999;
+      transition: width 0.1s ease;
+    }
+
+    /* Hero Header */
+    header.hero {
+      background: linear-gradient(135deg, var(--sf-navy) 0%, #0f172a 45%, var(--slack-aubergine) 100%);
+      color: white;
+      padding: 48px 24px;
+      text-align: center;
+      border-bottom: 4px solid var(--slack-green);
+      position: relative;
+    }
+
+    header.hero h1 {
+      font-size: 2.3rem;
+      margin-bottom: 12px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    header.hero p {
+      font-size: 1.1rem;
+      color: #cbd5e1;
+      max-width: 850px;
+      margin: 0 auto 20px auto;
+    }
+
+    .badge-bar {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f1f5f9;
+    }
+
+    .badge.success {
+      background: rgba(46, 182, 125, 0.25);
+      border-color: #2EB67D;
+      color: #86efac;
+    }
+
+    /* Layout Container */
+    .container {
+      max-width: 1220px;
+      margin: 28px auto;
+      padding: 0 20px;
+    }
+
+    /* Sticky Navigation Bar with Search */
+    .nav-wrapper {
+      position: sticky;
+      top: 12px;
+      z-index: 100;
+      margin-bottom: 28px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      padding: 6px;
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      scrollbar-width: thin;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .nav-tab {
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      color: var(--text-sub);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .nav-tab:hover {
+      background: #f1f5f9;
+      color: var(--sf-blue);
+    }
+
+    .nav-tab.active {
+      background: var(--sf-blue);
+      color: #ffffff;
+    }
+
+    /* Section Cards */
+    .section-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    h2.section-title {
+      font-size: 1.55rem;
+      margin-bottom: 20px;
+      color: var(--sf-navy);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 12px;
+    }
+
+    .title-badge {
+      font-size: 0.72rem;
+      font-weight: 800;
+      background: #e0f2fe;
+      color: var(--sf-blue);
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    h3.sub-title {
+      font-size: 1.25rem;
+      margin: 24px 0 12px 0;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h4.sub-sub-title {
+      font-size: 1.05rem;
+      margin: 18px 0 10px 0;
+      color: #1e293b;
+    }
+
+    p {
+      color: #334155;
+      font-size: 0.98rem;
+      margin-bottom: 14px;
+    }
+
+    /* Lists */
+    ul.styled-list, ol.styled-ordered-list {
+      padding-left: 24px;
+      margin-bottom: 18px;
+    }
+
+    li {
+      color: #334155;
+      font-size: 0.96rem;
+      margin-bottom: 8px;
+    }
+
+    li.task-item {
+      list-style-type: none;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    li.task-item.checked {
+      color: #059669;
+      font-weight: 500;
+    }
+
+    .check-icon {
+      font-weight: bold;
+      color: #10b981;
+    }
+
+    /* Visual Illustration Card */
+    .visual-illustration-card {
+      background: #0f172a;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin: 24px 0 32px 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      border: 1px solid #334155;
+    }
+
+    .illustration-header {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .illustration-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: #0284c7;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .illustration-header h3 {
+      font-size: 1.2rem;
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    /* Diagram Box (Mermaid) */
+    .diagram-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin: 22px 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+
+    .diagram-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    /* Step Card */
+    .step-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 18px 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      border-left: 4px solid var(--sf-blue);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .step-badge {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #ffffff;
+      background: var(--sf-blue);
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .step-card h4 {
+      font-size: 1.15rem;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    /* Code Container & Syntax Styling */
+    .code-container {
+      background: var(--code-bg);
+      border-radius: var(--radius-md);
+      margin: 18px 0;
+      overflow: hidden;
+      border: 1px solid #334155;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #141418;
+      padding: 8px 16px;
+      border-bottom: 1px solid #2d2d35;
+    }
+
+    .lang-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+    }
+
+    .copy-btn {
+      background: #282832;
+      color: #cbd5e1;
+      border: 1px solid #444;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: var(--sf-blue);
+      color: #ffffff;
+      border-color: var(--sf-blue);
+    }
+
+    pre {
+      padding: 16px;
+      overflow-x: auto;
+      color: #f8f8f2;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    }
+
+    .inline-code {
+      background: #edf2f7;
+      color: #c026d3;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      border: 1px solid #e2e8f0;
+      font-weight: 600;
+    }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      text-align: left;
+      font-size: 0.94rem;
+    }
+
+    .styled-table th {
+      background: #f1f5f9;
+      color: var(--sf-navy);
+      font-weight: 700;
+      padding: 12px 16px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+
+    .styled-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+
+    .styled-table tr:hover {
+      background: #f8fafc;
+    }
+
+    /* Callout Boxes */
+    .callout-box {
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      margin: 20px 0;
+      border-left: 4px solid;
+    }
+
+    .callout-box.info {
+      background: #f0f9ff;
+      border-color: #0284c7;
+    }
+    .callout-box.info .callout-title { color: #0369a1; }
+
+    .callout-box.tip {
+      background: #fdf4ff;
+      border-color: #c084fc;
+    }
+    .callout-box.tip .callout-title { color: #7e22ce; }
+
+    .callout-box.warning {
+      background: #fffbeb;
+      border-color: #f59e0b;
+    }
+    .callout-box.warning .callout-title { color: #b45309; }
+
+    .callout-box.important {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+    .callout-box.important .callout-title { color: #1d4ed8; }
+
+    .callout-box.caution {
+      background: #fef2f2;
+      border-color: #ef4444;
+    }
+    .callout-box.caution .callout-title { color: #b91c1c; }
+
+    .callout-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .callout-body {
+      color: #334155;
+      font-size: 0.95rem;
+    }
+
+    hr.section-divider {
+      border: 0;
+      height: 1px;
+      background: #e2e8f0;
+      margin: 32px 0;
+    }
+
+    /* Image Container */
+    .doc-img-container {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .doc-img {
+      max-width: 100%;
+      border-radius: var(--radius-md);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border: 1px solid var(--border-color);
+    }
+    .img-caption {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    /* Back to top button */
+    .back-to-top {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--sf-blue);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 24px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(1, 118, 211, 0.4);
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      z-index: 99;
+    }
+
+    .back-to-top:hover {
+      background: var(--sf-dark-blue);
+      transform: translateY(-2px);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 32px 20px;
+      color: #64748b;
+      font-size: 0.88rem;
+      border-top: 1px solid var(--border-color);
+      background: #ffffff;
+      margin-top: 48px;
+    }
+
+    @media print {
+      .nav-wrapper, .back-to-top, .copy-btn, #progress-bar { display: none !important; }
+      .section-card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div id="progress-bar"></div>
+
+  <!-- Hero Header -->
+  <header class="hero">
+    <h1>Snowflake Model Context Protocol (MCP) Guide &amp; Implementation Blueprint</h1>
+    <p>Enterprise Technical Documentation &amp; Operational Reference</p>
+    <div class="badge-bar">
+      <span class="badge success">Production Ready</span>
+      <span class="badge ">Salesforce Lightning</span>
+      <span class="badge ">Enterprise Architecture</span>
+      <span class="badge ">Complete Implementation</span>
+      <span class="badge ">Snowflake DWH</span>
+      <span class="badge ">Model Context Protocol</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Sticky Navigation Tabs -->
+    <div class="nav-wrapper">
+      <nav class="nav-tabs">
+        <a href="#sec-1-executive-summary-what-is-model-context-protocol-mcp" class="nav-tab">Executive Summary &amp; What is Model Context Protocol (MCP)?</a>
+        <a href="#sec-2-snowflake-mcp-architecture-security-isolation" class="nav-tab">Snowflake MCP Architecture &amp; Security Isolation</a>
+        <a href="#sec-3-step-by-step-creation-of-the-snowflake-mcp" class="nav-tab">Step-by-Step Creation of the Snowflake MCP</a>
+        <a href="#sec-4-how-the-mcp-is-orchestrated-in-slack-bot-ai-agent" class="nav-tab">How the MCP is Orchestrated in Slack Bot &amp; AI Agent</a>
+        <a href="#sec-5-verification-security-testing-evidence" class="nav-tab">Verification &amp; Security Testing Evidence</a>
+        <a href="#sec-6-master-developer-blueprint-how-to-create-a-new-mcp-server-client" class="nav-tab">Master Developer Blueprint: How to Create a NEW MCP Server/Client</a>
+        <a href="#sec-7-production-operations-troubleshooting-maintenance-runbook" class="nav-tab">Production Operations, Troubleshooting &amp; Maintenance Runbook</a>
+      </nav>
+    </div>
+
+    <!-- Document Content Sections -->
+    <p>A technical architecture specification, operational guide, and developer playbook for designing, implementing, securing, and orchestrating <strong>Model Context Protocol (MCP)</strong> tools with autonomous AI agents (Google Gemini 3.6 Flash) and Slack bots.</p>
+<hr class="section-divider"/>
+<section class="section-card" id="sec-1-executive-summary-what-is-model-context-protocol-mcp">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 1. Executive Summary & What is Model Context Protocol (MCP)?</h2>
+
+    <div class="visual-illustration-card">
+      <div class="illustration-header">
+        <span class="illustration-tag">Model Context Protocol (MCP) Standard</span>
+        <h3>Autonomous Tool Discovery, JSON-RPC 2.0 Negotiation & Secure DWH Views</h3>
+      </div>
+      <svg viewBox="0 0 960 360" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+        <!-- AI Host Layer -->
+        <g transform="translate(40, 40)">
+          <rect x="0" y="0" width="240" height="280" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+          <rect x="0" y="0" width="240" height="38" rx="10" fill="#0284c7"/>
+          <text x="20" y="24" fill="#ffffff" font-size="14" font-weight="bold">1. MCP Client / Agent Host</text>
+
+          <rect x="15" y="55" width="210" height="50" rx="6" fill="#0f172a" stroke="#475569"/>
+          <text x="25" y="75" fill="#38bdf8" font-size="12" font-weight="bold">Google Gemini 3.6 Flash</text>
+          <text x="25" y="92" fill="#cbd5e1" font-size="10">Reasoning & Intent Resolver</text>
+
+          <rect x="15" y="118" width="210" height="60" rx="6" fill="#0f172a" stroke="#475569"/>
+          <text x="25" y="138" fill="#ffffff" font-size="11" font-weight="bold">Dynamic Tool Discovery</text>
+          <text x="25" y="154" fill="#94a3b8" font-size="10">Queries MCP server via</text>
+          <text x="25" y="168" fill="#38bdf8" font-size="10" font-family="monospace">tools/list</text>
+
+          <rect x="15" y="190" width="210" height="70" rx="6" fill="#0f172a" stroke="#475569"/>
+          <text x="25" y="210" fill="#ffffff" font-size="11" font-weight="bold">Autonomous Invocation</text>
+          <text x="25" y="226" fill="#94a3b8" font-size="10">Dispatches structured call:</text>
+          <text x="25" y="244" fill="#f43f5e" font-size="10" font-family="monospace">tools/call { accountId }</text>
+        </g>
+
+        <!-- MCP Protocol Bridge -->
+        <g transform="translate(320, 40)">
+          <rect x="0" y="0" width="320" height="280" rx="10" fill="#1e293b" stroke="#a855f7" stroke-width="2"/>
+          <rect x="0" y="0" width="320" height="38" rx="10" fill="#7e22ce"/>
+          <text x="20" y="24" fill="#ffffff" font-size="14" font-weight="bold">2. Model Context Protocol Bridge</text>
+
+          <rect x="15" y="55" width="290" height="95" rx="6" fill="#0f172a" stroke="#6b21a8"/>
+          <text x="25" y="78" fill="#c084fc" font-size="12" font-weight="bold">JSON-RPC 2.0 Protocol Engine</text>
+          <text x="25" y="98" fill="#e2e8f0" font-size="10">• Schema Validation (TypeBox / Zod)</text>
+          <text x="25" y="114" fill="#e2e8f0" font-size="10">• Standardized Error Codes (-32600 to -32603)</text>
+          <text x="25" y="130" fill="#e2e8f0" font-size="10">• Bidirectional SSE or stdio Transport</text>
+
+          <rect x="15" y="162" width="290" height="98" rx="6" fill="#0f172a" stroke="#22c55e"/>
+          <text x="25" y="184" fill="#4ade80" font-size="12" font-weight="bold">Security & Least Privilege</text>
+          <text x="25" y="202" fill="#cbd5e1" font-size="10">• Zero DDL / DML write permissions</text>
+          <text x="25" y="218" fill="#cbd5e1" font-size="10">• Role strictly restricted to MCP_AGENT_READER</text>
+          <text x="25" y="234" fill="#cbd5e1" font-size="10">• SQL Injection Immune Parameterized SQL</text>
+          <text x="25" y="248" fill="#22d3ee" font-size="9" font-weight="bold">✓ ZERO PLATFORM BRANDING IN RESULTS</text>
+        </g>
+
+        <!-- Snowflake Warehouse Layer -->
+        <g transform="translate(680, 40)">
+          <rect x="0" y="0" width="240" height="280" rx="10" fill="#0e2a47" stroke="#29B5E8" stroke-width="2"/>
+          <rect x="0" y="0" width="240" height="38" rx="10" fill="#0284c7"/>
+          <text x="20" y="24" fill="#ffffff" font-size="14" font-weight="bold">3. Snowflake Warehouse</text>
+
+          <rect x="15" y="55" width="210" height="60" rx="6" fill="#07192c" stroke="#29B5E8"/>
+          <text x="25" y="76" fill="#29B5E8" font-size="12" font-weight="bold">Database: LEARNDC_MCP_DB</text>
+          <text x="25" y="94" fill="#bfdbfe" font-size="10">Dedicated to AI Agents</text>
+
+          <rect x="15" y="125" width="210" height="70" rx="6" fill="#07192c" stroke="#38bdf8"/>
+          <text x="25" y="146" fill="#ffffff" font-size="11" font-weight="bold">Secure View: V_ACCOUNT_INSIGHTS</text>
+          <text x="25" y="164" fill="#93c5fd" font-size="10">Restricted to 8 sanitized fields</text>
+          <text x="25" y="180" fill="#4ade80" font-size="9" font-weight="bold">No PII or Sensitive Columns</text>
+
+          <rect x="15" y="205" width="210" height="55" rx="6" fill="#07192c" stroke="#22c55e"/>
+          <text x="25" y="226" fill="#ffffff" font-size="11" font-weight="bold">Clean JSON DTO Output</text>
+          <text x="25" y="244" fill="#cbd5e1" font-size="10">Streamed back to AI Agent</text>
+        </g>
+      </svg>
+    </div>
+  
+<h3 class="sub-title">What is Model Context Protocol (MCP)?</h3>
+<p>The <strong>Model Context Protocol (MCP)</strong> is an open, standardized protocol that standardizes how Large Language Model (LLM) agents securely connect to external enterprise data sources, business tools, and internal APIs.</p>
+<p>Historically, AI agents integrated with external services through custom, ad-hoc SDK wrappers and raw SQL strings directly embedded in application code. This legacy approach created significant challenges:</p>
+<ul class="styled-list">
+<li><strong>High Security Risk</strong>: AI models often operated with high-privilege credentials capable of modifying or dropping production data.</li>
+<li><strong>Tight Coupling</strong>: Any change to a database schema or API endpoint required updating the LLM prompt and core application logic.</li>
+<li><strong>Lack of Reusability</strong>: Tool definitions could not be shared across different AI surfaces (e.g., Slack, Salesforce, terminal, web apps).</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">CODE</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-">┌──────────────────────────────────────────────────────────────────────────────────┐
+│                               MCP ARCHITECTURE                                   │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│   ┌────────────────────────┐                   ┌────────────────────────┐        │
+│   │   AI Agent / Client    │                   │   MCP Tool Provider    │        │
+│   │ (Gemini Session Mgr)   │                   │ (Snowflake MCP Client) │        │
+│   └───────────┬────────────┘                   └───────────┬────────────┘        │
+│               │                                            │                     │
+│               │ 1. getTools()                              │                     │
+│               │ ◄──────────────────────────────────────────┤                     │
+│               │    (Returns JSON Schemas &amp; Descriptions)   │                     │
+│               │                                            │                     │
+│               │ 2. Autonomous LLM Reasoning                │                     │
+│               │    (LLM decides to call a tool)            │                     │
+│               │                                            │                     │
+│               │ 3. callTool(toolName, arguments)           │                     │
+│               │ ──────────────────────────────────────────►│                     │
+│               │                                            │ 4. Read-Only Query  │
+│               │                                            │    via Least-Priv   │
+│               │                                            │    Role             │
+│               │                                            ▼                     │
+│               │                                   [Snowflake Secure View]        │
+│               │                                            │                     │
+│               │ 5. Tool Result (Sanitized JSON DTO)        │                     │
+│               │ ◄──────────────────────────────────────────┘                     │
+│               ▼                                                                  │
+│   Synthesizes Unified Dossier for User                                           │
+└──────────────────────────────────────────────────────────────────────────────────┘</code></pre>
+            </div>
+          <h3 class="sub-title">Core MCP Concepts</h3>
+<ol class="styled-ordered-list">
+<li><strong>Host / Orchestrator</strong>: The application runtime managing the AI agent session (in our architecture: <a href="file:///C:/Users/Sumit%20Kr%20Gupta/OneDrive%20-%20Teqfocus%20Solutions%20Pvt.%20Ltd/Desktop/Learn%20DC/slack-gemini-agent" target="_blank" rel="noopener noreferrer" class="doc-link"><code class="inline-code">slack-gemini-agent</code></a>).</li>
+<li><strong>MCP Client</strong>: The service adapter maintaining isolated database/API credentials, declaring standardized tools, and dispatching execution calls.</li>
+<li><strong>Tools</strong>: Callable functions exposed to the LLM. Each tool has:</li>
+</ol>
+<ul class="styled-list">
+<li><code class="inline-code">name</code>: A unique identifier (e.g. <code class="inline-code">snowflake_get_account_telemetry</code>).</li>
+<li><code class="inline-code">description</code>: Plain-English explanation instructing the LLM when and why to invoke the tool.</li>
+<li><code class="inline-code">inputSchema</code>: JSON Schema specifying required and optional arguments.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Tool Execution Result</strong>: Strongly-typed JSON data objects (DTOs) returned back to the LLM context.</li>
+</ol>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-2-snowflake-mcp-architecture-security-isolation">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 2. Snowflake MCP Architecture & Security Isolation</h2>
+<p>In enterprise environments, an AI agent should <strong>never</strong> query production transactional tables directly or connect using administrative accounts (<code class="inline-code">ACCOUNTADMIN</code> / <code class="inline-code">SYSADMIN</code>).</p>
+<p>Our Snowflake MCP implementation establishes an <strong>isolated security boundary</strong>:</p>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+flowchart TD
+    subgraph UserSurfaces["User Interaction Layer"]
+        SLACK[User in Slack<br/>/account-brief]
+        LWC[User in Salesforce<br/>slackBotAgent LWC]
+    end
+
+    subgraph AgentHost["Node.js Application (slack-gemini-agent)"]
+        GEMINI[Google Gemini 3.6 Flash<br/>Agent Session Manager]
+        SF_MCP[Salesforce MCP Client<br/>salesforceMcpClient.ts]
+        SNOW_MCP[Snowflake MCP Client<br/>snowflakeMcpClient.ts]
+    end
+
+    subgraph SnowflakeIsolation["Snowflake Cloud Data Warehouse (hjyxziv-mi58790)"]
+        subgraph BaseDB["LEARNDC_DB (Base Transactional DB)"]
+            TABLE[ANALYTICS.ACCOUNT_ANALYTICS<br/>13 Columns incl. ARR & Contact Data]
+        end
+
+        subgraph McpDB["LEARNDC_MCP_DB (Dedicated Agent DB)"]
+            VIEW[SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS<br/>Strictly 8 Sanitized Columns]
+        end
+
+        ROLE[MCP_AGENT_READER_ROLE<br/>Least-Privilege Read-Only Role]
+    end
+
+    SLACK --> GEMINI
+    LWC --> GEMINI
+    GEMINI -->|SOQL / Record Tools| SF_MCP
+    GEMINI -->|Telemetry Tools| SNOW_MCP
+
+    SNOW_MCP -->|Snowflake SDK Connection| ROLE
+    ROLE -->|USAGE & SELECT Only| VIEW
+    VIEW -.->|Cross-DB Resolution in Owner Context| TABLE
+
+    %% Denied Access Indicator
+    ROLE x-..-x|BLOCKED: No Direct Access| TABLE
+              </div>
+            </div>
+          <h3 class="sub-title">Key Security Principles Implemented:</h3>
+<ol class="styled-ordered-list">
+<li><strong>Database & Schema Segregation</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Transactional staging and bi-directional synchronization live in <code class="inline-code">LEARNDC_DB.ANALYTICS</code>.</li>
+<li>MCP Agent queries live exclusively in <code class="inline-code">LEARNDC_MCP_DB.SECURE_ANALYTICS</code>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Strict Column Sanitization (8 Fields Only)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Raw CRM fields like <code class="inline-code">ANNUAL_REVENUE</code> and internal email addresses are stripped.</li>
+<li>Only 8 fields required for customer health analytics are exposed: <code class="inline-code">SF_ACCOUNT_ID</code>, <code class="inline-code">ACCOUNT_NAME</code>, <code class="inline-code">SLA_TIER</code>, <code class="inline-code">HEALTH_SCORE</code>, <code class="inline-code">HEALTH_STATUS</code>, <code class="inline-code">USAGE_HOURS</code>, <code class="inline-code">CHURN_RISK</code>, <code class="inline-code">SNOWFLAKE_LAST_UPDATED</code>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Snowflake Secure View Protection</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><code class="inline-code">V_ACCOUNT_INSIGHTS</code> is defined as a <strong><code class="inline-code">SECURE VIEW</code></strong>.</li>
+<li>Internal view definitions and query execution plans are masked from non-owner roles.</li>
+<li>The view executes with the creator's permissions (<code class="inline-code">ACCOUNTADMIN</code>), allowing safe traversal into <code class="inline-code">LEARNDC_DB</code> without granting the consumer role any direct access to <code class="inline-code">LEARNDC_DB</code>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Least-Privilege Role (<code class="inline-code">MCP_AGENT_READER_ROLE</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Granted <code class="inline-code">USAGE</code> on warehouse <code class="inline-code">COMPUTE_WH</code>.</li>
+<li>Granted <code class="inline-code">USAGE</code> on database <code class="inline-code">LEARNDC_MCP_DB</code> and schema <code class="inline-code">SECURE_ANALYTICS</code>.</li>
+<li>Granted <code class="inline-code">SELECT</code> on <code class="inline-code">V_ACCOUNT_INSIGHTS</code>.</li>
+<li><strong>Zero write privileges</strong>: All <code class="inline-code">INSERT</code>, <code class="inline-code">UPDATE</code>, <code class="inline-code">DELETE</code>, and <code class="inline-code">DROP</code> commands are rejected at the Snowflake compiler level.</li>
+</ul>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-3-step-by-step-creation-of-the-snowflake-mcp">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 3. Step-by-Step Creation of the Snowflake MCP</h2>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 1</span>
+                <h4>Snowflake Infrastructure Provisioning (DDL)</h4>
+              </div>
+          <p>The following SQL statements provisioned the database, secure view, and read-only role:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">-- 1. Create Dedicated MCP Database &amp; Schema
+CREATE DATABASE IF NOT EXISTS LEARNDC_MCP_DB 
+COMMENT = &#039;Dedicated Snowflake Database for Model Context Protocol (MCP) Agent Access&#039;;
+
+CREATE SCHEMA IF NOT EXISTS LEARNDC_MCP_DB.SECURE_ANALYTICS 
+COMMENT = &#039;Sanitized Secure Views for AI Agent Consumption&#039;;
+
+-- 2. Create Cross-Database Secure View with Strictly 8 Fields
+CREATE OR REPLACE SECURE VIEW LEARNDC_MCP_DB.SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS 
+COMMENT = &#039;Sanitized Account Insights View for MCP Agent with strictly 8 fields and zero base table exposure&#039;
+AS
+SELECT 
+    SF_ACCOUNT_ID,
+    ACCOUNT_NAME,
+    SLA_TIER,
+    HEALTH_SCORE,
+    CASE 
+        WHEN HEALTH_SCORE &gt;= 80 THEN &#039;EXCELLENT&#039;
+        WHEN HEALTH_SCORE &gt;= 60 THEN &#039;FAIR&#039;
+        ELSE &#039;AT RISK&#039;
+    END AS HEALTH_STATUS,
+    USAGE_HOURS,
+    CHURN_RISK,
+    SNOWFLAKE_LAST_UPDATED
+FROM LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS;
+
+-- 3. Create Dedicated Read-Only MCP Role
+CREATE ROLE IF NOT EXISTS MCP_AGENT_READER_ROLE 
+COMMENT = &#039;Least-privileged read-only role for Slack Gemini MCP Agent&#039;;
+
+-- 4. Grant Least-Privilege Permissions
+GRANT USAGE ON WAREHOUSE COMPUTE_WH TO ROLE MCP_AGENT_READER_ROLE;
+GRANT USAGE ON DATABASE LEARNDC_MCP_DB TO ROLE MCP_AGENT_READER_ROLE;
+GRANT USAGE ON SCHEMA LEARNDC_MCP_DB.SECURE_ANALYTICS TO ROLE MCP_AGENT_READER_ROLE;
+GRANT SELECT ON VIEW LEARNDC_MCP_DB.SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS TO ROLE MCP_AGENT_READER_ROLE;
+
+-- 5. Assign Role to Integration User
+GRANT ROLE MCP_AGENT_READER_ROLE TO USER SUMITGUPTA05;</code></pre>
+            </div>
+          <hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 2</span>
+                <h4>Implementing the TypeScript Snowflake MCP Client</h4>
+              </div>
+          <p>The client is built as a standalone TypeScript class in <a href="file:///C:/Users/Sumit%20Kr%20Gupta/OneDrive%20-%20Teqfocus%20Solutions%20Pvt.%20Ltd/Desktop/Learn%20DC/slack-gemini-agent/src/mcp/snowflakeMcpClient.ts" target="_blank" rel="noopener noreferrer" class="doc-link"><code class="inline-code">slack-gemini-agent/src/mcp/snowflakeMcpClient.ts</code></a>.</p>
+<h4 class="sub-sub-title">A. Data Transfer Object (DTO) Definition</h4>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TYPESCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-typescript">export interface SecureAccountTelemetryDTO {
+  isFound: boolean;
+  sfAccountId?: string;
+  accountName?: string;
+  slaTier?: string;
+  healthScore?: number;
+  healthStatus?: string;
+  usageHours?: number;
+  churnRisk?: string;
+  telemetryLastUpdated?: string;
+  message?: string;
+}</code></pre>
+            </div>
+          <h4 class="sub-sub-title">B. Singleton Pattern & Read-Only Connection Binding</h4>
+<p>The client connects exclusively through the least-privileged role:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TYPESCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-typescript">import snowflake from &#039;snowflake-sdk&#039;;
+import { loadConfig } from &#039;../config.js&#039;;
+
+export class SnowflakeMcpClient {
+  private static instance: SnowflakeMcpClient;
+  private isInitialized = false;
+
+  public static getInstance(): SnowflakeMcpClient {
+    if (!SnowflakeMcpClient.instance) {
+      SnowflakeMcpClient.instance = new SnowflakeMcpClient();
+    }
+    return SnowflakeMcpClient.instance;
+  }
+
+  private createReadOnlyConnection(): snowflake.Connection {
+    const config = loadConfig(false);
+    return snowflake.createConnection({
+      account: config.snowflakeAccount!,
+      username: config.snowflakeUsername!,
+      password: config.snowflakePassword!,
+      warehouse: &#039;COMPUTE_WH&#039;,
+      database: &#039;LEARNDC_MCP_DB&#039;,          // Strictly bound to MCP DB
+      schema: &#039;SECURE_ANALYTICS&#039;,          // Strictly bound to secure schema
+      role: &#039;MCP_AGENT_READER_ROLE&#039;,       // Strictly bound to read-only role
+    });
+  }
+}</code></pre>
+            </div>
+          <h4 class="sub-sub-title">C. Declaring Standardized MCP Tools</h4>
+<p>The <code class="inline-code">getTools()</code> method returns tool definitions following the MCP specification:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TYPESCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-typescript">public getTools(): McpToolDefinition[] {
+  return [
+    {
+      name: &#039;snowflake_get_account_telemetry&#039;,
+      description: &#039;Retrieves sanitized customer health, status (EXCELLENT/FAIR/AT RISK), usage hours, SLA tier, and churn risk from the Snowflake secure analytics view.&#039;,
+      inputSchema: {
+        type: &#039;OBJECT&#039;,
+        properties: {
+          accountIdentifier: {
+            type: &#039;STRING&#039;,
+            description: &#039;The Account Name or Salesforce 18-character Account ID (e.g. &quot;Apex Global Innovations&quot;).&#039;,
+          },
+        },
+        required: [&#039;accountIdentifier&#039;],
+      },
+    },
+    {
+      name: &#039;snowflake_list_at_risk_accounts&#039;,
+      description: &#039;Lists accounts displaying elevated churn risk (HIGH) or low health scores (&lt;60) from the Snowflake secure analytics view.&#039;,
+      inputSchema: {
+        type: &#039;OBJECT&#039;,
+        properties: {
+          maxResults: {
+            type: &#039;INTEGER&#039;,
+            description: &#039;Maximum number of records to return (default: 5).&#039;,
+          },
+        },
+      },
+    },
+  ];
+}</code></pre>
+            </div>
+          <h4 class="sub-sub-title">D. Tool Execution & Connection Teardown</h4>
+<p>When Gemini invokes a tool, <code class="inline-code">callTool()</code> runs a parameterized query and destroys the connection immediately after query completion to avoid socket leakage:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TYPESCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-typescript">public async callTool(toolName: string, args: Record&lt;string, any&gt;): Promise&lt;any&gt; {
+  switch (toolName) {
+    case &#039;snowflake_get_account_telemetry&#039;: {
+      const identifier = (args.accountIdentifier || &#039;&#039;).trim();
+      const sql = `
+        SELECT 
+          SF_ACCOUNT_ID, ACCOUNT_NAME, SLA_TIER, HEALTH_SCORE,
+          HEALTH_STATUS, USAGE_HOURS, CHURN_RISK, SNOWFLAKE_LAST_UPDATED
+        FROM LEARNDC_MCP_DB.SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS
+        WHERE SF_ACCOUNT_ID = ? OR LOWER(ACCOUNT_NAME) = LOWER(?) OR LOWER(ACCOUNT_NAME) LIKE LOWER(?)
+        ORDER BY SNOWFLAKE_LAST_UPDATED DESC NULLS LAST
+        LIMIT 1
+      `;
+      const rows = await this.executeQuery&lt;any&gt;(sql, [identifier, identifier, `%${identifier}%`]);
+      if (!rows || rows.length === 0) {
+        return { isFound: false, message: `No telemetry insights found for &quot;${identifier}&quot;.` };
+      }
+      return this.mapToDTO(rows[0]);
+    }
+
+    case &#039;snowflake_list_at_risk_accounts&#039;: {
+      const limit = args.maxResults ? Number(args.maxResults) : 5;
+      const sql = `
+        SELECT SF_ACCOUNT_ID, ACCOUNT_NAME, SLA_TIER, HEALTH_SCORE, HEALTH_STATUS, USAGE_HOURS, CHURN_RISK
+        FROM LEARNDC_MCP_DB.SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS
+        WHERE CHURN_RISK = &#039;HIGH&#039; OR HEALTH_SCORE &lt; 60
+        ORDER BY HEALTH_SCORE ASC
+        LIMIT ?
+      `;
+      const rows = await this.executeQuery&lt;any&gt;(sql, [limit]);
+      return { count: rows.length, accounts: rows };
+    }
+  }
+}</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-4-how-the-mcp-is-orchestrated-in-slack-bot-ai-agent">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 4. How the MCP is Orchestrated in Slack Bot & AI Agent</h2>
+<h3 class="sub-title">1. Application Startup (<code class="inline-code">src/index.ts</code>)</h3>
+<p>On application initialization, both MCP clients initialize their configurations:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TYPESCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-typescript">import { salesforceMcpClient } from &#039;./mcp/salesforceMcpClient.js&#039;;
+import { snowflakeMcpClient } from &#039;./mcp/snowflakeMcpClient.js&#039;;
+
+await salesforceMcpClient.initialize();
+await snowflakeMcpClient.initialize();</code></pre>
+            </div>
+          <h3 class="sub-title">2. Multi-MCP Tool Injection in Gemini Agent (<code class="inline-code">src/gemini/agent.ts</code>)</h3>
+<p>The session manager aggregates tools across all active MCP clients and passes them to the Gemini model declaration:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TYPESCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-typescript">export class GeminiAgentSessionManager {
+  private getMergedTools(): Tool[] {
+    const sfTools = salesforceMcpClient.getTools().map(this.mcpToGeminiDeclaration);
+    const snowTools = snowflakeMcpClient.getTools().map(this.mcpToGeminiDeclaration);
+    return [{ functionDeclarations: [...sfTools, ...snowTools] }];
+  }
+
+  // Autonomous Execution Router
+  private async executeFunctionCall(call: FunctionCall): Promise&lt;FunctionResponse&gt; {
+    const { name, args } = call;
+
+    if (snowflakeMcpClient.hasTool(name)) {
+      const result = await snowflakeMcpClient.callTool(name, args);
+      return { name, response: { result } };
+    }
+
+    if (salesforceMcpClient.hasTool(name)) {
+      const result = await salesforceMcpClient.callTool(name, args);
+      return { name, response: { result } };
+    }
+
+    throw new Error(`Unregistered MCP tool: ${name}`);
+  }
+}</code></pre>
+            </div>
+          <h3 class="sub-title">3. System Prompt Alignment: Zero Platform Brand Leakage (<code class="inline-code">src/gemini/prompt.ts</code>)</h3>
+<p>To prevent the agent from displaying confusing internal backend labels to business users, the system prompt instructs Gemini:</p>
+<ul class="styled-list">
+<li><strong>Never mention</strong> backend technologies ("Salesforce", "Snowflake", "CRM", "Warehouse", "LEARNDC_DB").</li>
+<li>Present the synthesis as a single unified <strong>Account Dossier</strong> divided into business sections:</li>
+<li><code class="inline-code">Account Overview</code></li>
+<li><code class="inline-code">Account Health &amp; Platform Utilization</code></li>
+<li><code class="inline-code">Recent Activity &amp; Communication</code></li>
+</ul>
+<h3 class="sub-title">4. Slack Slash Command Integration (<code class="inline-code">src/slack/commands.ts</code>)</h3>
+<p>When a user types <code class="inline-code">/account-brief Apex Global Innovations</code> in Slack, the command handler invokes the MCP client directly to build a standardized Block Kit card:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TYPESCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-typescript">const telemetry = await snowflakeMcpClient.callTool(&#039;snowflake_get_account_telemetry&#039;, {
+  accountIdentifier: accountName,
+});
+// Renders single unified Slack Block Kit Card</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-5-verification-security-testing-evidence">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 5. Verification & Security Testing Evidence</h2>
+<h3 class="sub-title">Test Matrix</h3>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Test Target</th><th>Execution Command / Query</th><th>Expected Behavior</th><th>Live Result</th></tr></thead><tbody><tr><td><strong>Secure View Read</strong></td><td><code class="inline-code">SELECT * FROM LEARNDC_MCP_DB.SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS LIMIT 5;</code></td><td>Returns 8 sanitized fields</td><td>✅ Passed</td></tr><tr><td><strong>Write Protection</strong></td><td><code class="inline-code">INSERT INTO V_ACCOUNT_INSIGHTS (SF_ACCOUNT_ID) VALUES (&#039;001test&#039;);</code></td><td>Compilation error (Not authorized)</td><td>✅ Rejected (Safe)</td></tr><tr><td><strong>Base DB Protection</strong></td><td><code class="inline-code">SELECT * FROM LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS;</code> (as MCP role)</td><td>Database not authorized error</td><td>✅ Rejected (Safe)</td></tr><tr><td><strong>TypeScript MCP Client</strong></td><td><code class="inline-code">await snowflakeMcpClient.callTool(&#039;snowflake_get_account_telemetry&#039;, { accountIdentifier: &#039;Apex Global Innovations&#039; })</code></td><td>Returns structured DTO</td><td>✅ Returned Health=85, Hours=142.5</td></tr><tr><td><strong>At-Risk Tool</strong></td><td><code class="inline-code">await snowflakeMcpClient.callTool(&#039;snowflake_list_at_risk_accounts&#039;, { maxResults: 5 })</code></td><td>Returns at-risk list</td><td>✅ Returned records</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-6-master-developer-blueprint-how-to-create-a-new-mcp-server-client">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 6. Master Developer Blueprint: How to Create a NEW MCP Server/Client</h2>
+<p>Use this standardized <strong>5-phase framework</strong> whenever you need to add a new external service or data source (e.g. <strong>PostgreSQL</strong>, <strong>Stripe</strong>, <strong>Jira</strong>, <strong>Zendesk</strong>) to the AI agent ecosystem.</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">CODE</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-">┌──────────────────────────────────────────────────────────────────────────────────┐
+│                          NEW MCP CREATION PLAYBOOK                               │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│ Phase 1: Security &amp; Boundary Definition (Least privilege, read-only token/role)   │
+│ Phase 2: Tool Contract Design (JSON Schema input &amp; output definitions)           │
+│ Phase 3: Implement Client Class (Extending base MCP pattern)                    │
+│ Phase 4: Host Registration &amp; Agent Injection (Register in index.ts &amp; agent.ts)   │
+│ Phase 5: Verification &amp; Zero-Brand-Leakage Formatting                           │
+└──────────────────────────────────────────────────────────────────────────────────┘</code></pre>
+            </div>
+          
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 1</span>
+                <h4>Security & Boundary Definition</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li><strong>Never use Admin/Superuser credentials</strong>: Always create a dedicated service account or scoped API token.</li>
+<li><strong>Apply Read-Only Constraints</strong>: Ensure the service role can only perform <code class="inline-code">SELECT</code> or <code class="inline-code">GET</code> operations.</li>
+<li><strong>Data Sanitization</strong>: Expose only the fields required for business decision-making. Expose no internal tokens, raw passwords, or confidential PII.</li>
+</ol>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 2</span>
+                <h4>Tool Contract Design</h4>
+              </div>
+          <p>Follow the naming convention: <code class="inline-code">&lt;service&gt;_&lt;action&gt;_&lt;entity&gt;</code>:</p>
+<ul class="styled-list">
+<li>✅ Good: <code class="inline-code">jira_get_customer_tickets</code>, <code class="inline-code">stripe_get_subscription_status</code>, <code class="inline-code">postgres_get_order_summary</code></li>
+<li>❌ Bad: <code class="inline-code">get_data</code>, <code class="inline-code">run_query</code>, <code class="inline-code">jiraTool</code></li>
+</ul>
+<p>Write descriptions from the perspective of the LLM explaining <strong>when</strong> to call the tool:</p>
+<ul class="styled-list">
+<li><em>"Retrieves active support tickets and open escalations for a specific customer account name."</em></li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 3</span>
+                <h4>TypeScript MCP Boilerplate Template (<code class="inline-code">genericMcpClient.ts</code>)</h4>
+              </div>
+          <p>Copy and adapt this template when creating any new MCP:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TYPESCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-typescript">// src/mcp/genericMcpClient.ts
+import { McpToolDefinition } from &#039;./salesforceMcpClient.js&#039;;
+
+export interface GenericEntityDTO {
+  isFound: boolean;
+  entityId?: string;
+  name?: string;
+  status?: string;
+  metadata?: Record&lt;string, any&gt;;
+  message?: string;
+}
+
+export class GenericMcpClient {
+  private static instance: GenericMcpClient;
+  private isInitialized = false;
+
+  private constructor() {}
+
+  public static getInstance(): GenericMcpClient {
+    if (!GenericMcpClient.instance) {
+      GenericMcpClient.instance = new GenericMcpClient();
+    }
+    return GenericMcpClient.instance;
+  }
+
+  public async initialize(): Promise&lt;boolean&gt; {
+    // 1. Validate environment credentials
+    // 2. Test connection to the service
+    this.isInitialized = true;
+    console.log(&#039;[GenericMCP] Initialized successfully.&#039;);
+    return true;
+  }
+
+  public isReady(): boolean {
+    return this.isInitialized;
+  }
+
+  /**
+   * Declares tool schemas conforming to MCP standard
+   */
+  public getTools(): McpToolDefinition[] {
+    return [
+      {
+        name: &#039;generic_get_entity_details&#039;,
+        description: &#039;Retrieves current status, metrics, and details for a given identifier.&#039;,
+        inputSchema: {
+          type: &#039;OBJECT&#039;,
+          properties: {
+            identifier: {
+              type: &#039;STRING&#039;,
+              description: &#039;The entity name, external ID, or lookup key.&#039;,
+            },
+          },
+          required: [&#039;identifier&#039;],
+        },
+      },
+    ];
+  }
+
+  public hasTool(name: string): boolean {
+    return this.getTools().some((t) =&gt; t.name === name);
+  }
+
+  /**
+   * Executes the tool invocation
+   */
+  public async callTool(toolName: string, args: Record&lt;string, any&gt;): Promise&lt;any&gt; {
+    console.log(`[GenericMCP] Invoking tool &quot;${toolName}&quot; with args:`, JSON.stringify(args));
+
+    switch (toolName) {
+      case &#039;generic_get_entity_details&#039;: {
+        const id = (args.identifier || &#039;&#039;).trim();
+        if (!id) return { isFound: false, message: &#039;Identifier is required.&#039; };
+
+        // Execute API call or read-only database query
+        return {
+          isFound: true,
+          entityId: id,
+          status: &#039;ACTIVE&#039;,
+        };
+      }
+
+      default:
+        throw new Error(`Unknown tool: &quot;${toolName}&quot;`);
+    }
+  }
+}
+
+export const genericMcpClient = GenericMcpClient.getInstance();</code></pre>
+            </div>
+          <hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 4</span>
+                <h4>Host Registration & Agent Injection</h4>
+              </div>
+          <h4 class="sub-sub-title">Step A: Bootstrap in <a href="file:///C:/Users/Sumit%20Kr%20Gupta/OneDrive%20-%20Teqfocus%20Solutions%20Pvt.%20Ltd/Desktop/Learn%20DC/slack-gemini-agent/src/index.ts" target="_blank" rel="noopener noreferrer" class="doc-link"><code class="inline-code">src/index.ts</code></a></h4>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TYPESCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-typescript">import { genericMcpClient } from &#039;./mcp/genericMcpClient.js&#039;;
+
+await genericMcpClient.initialize();</code></pre>
+            </div>
+          <h4 class="sub-sub-title">Step B: Register in <a href="file:///C:/Users/Sumit%20Kr%20Gupta/OneDrive%20-%20Teqfocus%20Solutions%20Pvt.%20Ltd/Desktop/Learn%20DC/slack-gemini-agent/src/gemini/agent.ts" target="_blank" rel="noopener noreferrer" class="doc-link"><code class="inline-code">src/gemini/agent.ts</code></a></h4>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TYPESCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-typescript">// 1. Add tools to Gemini tool list
+const genericTools = genericMcpClient.getTools().map(this.mcpToGeminiDeclaration);
+const mergedDeclarations = [...sfTools, ...snowTools, ...genericTools];
+
+// 2. Add router dispatch
+if (genericMcpClient.hasTool(name)) {
+  const result = await genericMcpClient.callTool(name, args);
+  return { name, response: { result } };
+}</code></pre>
+            </div>
+          <h4 class="sub-sub-title">Step C: Update System Prompt in <a href="file:///C:/Users/Sumit%20Kr%20Gupta/OneDrive%20-%20Teqfocus%20Solutions%20Pvt.%20Ltd/Desktop/Learn%20DC/slack-gemini-agent/src/gemini/prompt.ts" target="_blank" rel="noopener noreferrer" class="doc-link"><code class="inline-code">src/gemini/prompt.ts</code></a></h4>
+<ul class="styled-list">
+<li>Inform the model about the new tool's capabilities.</li>
+<li>Reinforce the Zero Brand Leakage rule: synthesize the output under standard business terminology without revealing the vendor name.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 5</span>
+                <h4>Verification & End-to-End Testing</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li>Compile the project with <code class="inline-code">npm run build</code>.</li>
+<li>Run a test inquiry in Slack (e.g. <code class="inline-code">@bot check status for Apex Global Innovations</code>).</li>
+<li>Verify the console logs:</li>
+</ol>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">CODE</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-">   [Gemini] Model decided to invoke tool: &quot;generic_get_entity_details&quot;
+   [GenericMCP] Invoking tool &quot;generic_get_entity_details&quot; with args: {&quot;identifier&quot;:&quot;Apex Global Innovations&quot;}
+   [Gemini] Synthesizing final response with tool results...</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-7-production-operations-troubleshooting-maintenance-runbook">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 7. Production Operations, Troubleshooting & Maintenance Runbook</h2>
+<h3 class="sub-title">Common Issues & Resolutions</h3>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Issue / Symptom</th><th>Root Cause</th><th>Resolution</th></tr></thead><tbody><tr><td><code class="inline-code">SQL compilation error: Object does not exist or not authorized</code></td><td>Querying without setting context or role does not have grant on view.</td><td>Always qualify with 3-part name: <code class="inline-code">LEARNDC_MCP_DB.SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS</code> and verify <code class="inline-code">GRANT SELECT</code> was executed.</td></tr><tr><td><code class="inline-code">Connection timed out</code></td><td>Warehouse <code class="inline-code">COMPUTE_WH</code> was suspended or network firewall blocked port 443.</td><td>Verify warehouse has <code class="inline-code">AUTO_RESUME = TRUE</code> and inspect proxy settings.</td></tr><tr><td><code class="inline-code">Agent displays raw table names</code></td><td>Prompt instruction missing zero-branding guideline.</td><td>Verify <a href="file:///C:/Users/Sumit%20Kr%20Gupta/OneDrive%20-%20Teqfocus%20Solutions%20Pvt.%20Ltd/Desktop/Learn%20DC/slack-gemini-agent/src/gemini/prompt.ts" target="_blank" rel="noopener noreferrer" class="doc-link"><code class="inline-code">prompt.ts</code></a> enforces the unified dossier schema.</td></tr><tr><td><code class="inline-code">Too many connections open</code></td><td>Connection not destroyed after query execution.</td><td>Ensure <code class="inline-code">conn.destroy()</code> is called in the <code class="inline-code">complete</code> callback of <code class="inline-code">conn.execute()</code>.</td></tr></tbody></table></div>
+<h3 class="sub-title">Warehouse Credit Optimization</h3>
+<p>To ensure the Snowflake warehouse consumes credits only when actively serving agent requests:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">ALTER WAREHOUSE COMPUTE_WH SET 
+    AUTO_SUSPEND = 60           -- Suspends warehouse after 1 minute of idle time
+    AUTO_RESUME = TRUE          -- Resumes warehouse automatically upon query arrival
+    STATEMENT_TIMEOUT_IN_SECONDS = 15; -- Prevents queries from hanging indefinitely</code></pre>
+            </div>
+          </section>
+
+  </div>
+
+  <a href="#" class="back-to-top">↑ Top</a>
+
+  <footer>
+    <strong>Salesforce Lightning Platform • Enterprise AI Integration Guide</strong><br/>
+    Internal Engineering Reference & Operational Playbook • Org: <code>learn_dc</code>
+  </footer>
+
+  <script>
+    function copyCode(btn) {
+      const container = btn.closest('.code-container');
+      const code = container.querySelector('code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const origText = btn.innerText;
+        btn.innerText = '✓ Copied!';
+        btn.style.background = '#2EB67D';
+        btn.style.borderColor = '#2EB67D';
+        btn.style.color = '#ffffff';
+        setTimeout(() => {
+          btn.innerText = origText;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 2000);
+      });
+    }
+
+    // Scroll Progress & Active Tab Highlighting
+    window.addEventListener('scroll', () => {
+      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / height) * 100;
+      document.getElementById('progress-bar').style.width = scrolled + '%';
+
+      const sections = document.querySelectorAll('.section-card');
+      const navTabs = document.querySelectorAll('.nav-tab');
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        if (winScroll >= sectionTop - 140) {
+          current = section.getAttribute('id');
+        }
+      });
+      navTabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.getAttribute('href') === '#' + current) {
+          tab.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+  

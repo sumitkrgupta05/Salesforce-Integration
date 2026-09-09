@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Salesforce &amp; Snowflake Bi-Directional Integration with Slack AI Agent &amp; Model Context Protocol (MCP) | Salesforce Enterprise Architecture</title>
+  <!-- Mermaid JS for Dynamic Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      securityLevel: 'loose',
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+      sequence: { useMaxWidth: true, showSequenceNumbers: true }
+    });
+  </script>
+  <style>
+    :root {
+      --sf-blue: #0176D3;
+      --sf-dark-blue: #0b5cab;
+      --sf-navy: #032d60;
+      --slack-aubergine: #4A154B;
+      --slack-green: #2EB67D;
+      --slack-yellow: #ECB22E;
+      --slack-red: #E01E5A;
+      --slack-blue: #36C5F0;
+      --gcp-blue: #4285F4;
+      --snowflake-blue: #29B5E8;
+      --gmail-red: #EA4335;
+      --cal-blue: #1A73E8;
+      --bg-light: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --border-color: #e2e8f0;
+      --code-bg: #1e1e24;
+      --radius-lg: 12px;
+      --radius-md: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-light);
+      color: var(--text-main);
+      line-height: 1.68;
+      padding-bottom: 80px;
+    }
+
+    /* Scroll progress indicator */
+    #progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--sf-blue), var(--slack-green), var(--slack-blue));
+      width: 0%;
+      z-index: 999;
+      transition: width 0.1s ease;
+    }
+
+    /* Hero Header */
+    header.hero {
+      background: linear-gradient(135deg, var(--sf-navy) 0%, #0f172a 45%, var(--slack-aubergine) 100%);
+      color: white;
+      padding: 48px 24px;
+      text-align: center;
+      border-bottom: 4px solid var(--slack-green);
+      position: relative;
+    }
+
+    header.hero h1 {
+      font-size: 2.3rem;
+      margin-bottom: 12px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    header.hero p {
+      font-size: 1.1rem;
+      color: #cbd5e1;
+      max-width: 850px;
+      margin: 0 auto 20px auto;
+    }
+
+    .badge-bar {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f1f5f9;
+    }
+
+    .badge.success {
+      background: rgba(46, 182, 125, 0.25);
+      border-color: #2EB67D;
+      color: #86efac;
+    }
+
+    /* Layout Container */
+    .container {
+      max-width: 1220px;
+      margin: 28px auto;
+      padding: 0 20px;
+    }
+
+    /* Sticky Navigation Bar with Search */
+    .nav-wrapper {
+      position: sticky;
+      top: 12px;
+      z-index: 100;
+      margin-bottom: 28px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      padding: 6px;
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      scrollbar-width: thin;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .nav-tab {
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      color: var(--text-sub);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .nav-tab:hover {
+      background: #f1f5f9;
+      color: var(--sf-blue);
+    }
+
+    .nav-tab.active {
+      background: var(--sf-blue);
+      color: #ffffff;
+    }
+
+    /* Section Cards */
+    .section-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    h2.section-title {
+      font-size: 1.55rem;
+      margin-bottom: 20px;
+      color: var(--sf-navy);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 12px;
+    }
+
+    .title-badge {
+      font-size: 0.72rem;
+      font-weight: 800;
+      background: #e0f2fe;
+      color: var(--sf-blue);
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    h3.sub-title {
+      font-size: 1.25rem;
+      margin: 24px 0 12px 0;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h4.sub-sub-title {
+      font-size: 1.05rem;
+      margin: 18px 0 10px 0;
+      color: #1e293b;
+    }
+
+    p {
+      color: #334155;
+      font-size: 0.98rem;
+      margin-bottom: 14px;
+    }
+
+    /* Lists */
+    ul.styled-list, ol.styled-ordered-list {
+      padding-left: 24px;
+      margin-bottom: 18px;
+    }
+
+    li {
+      color: #334155;
+      font-size: 0.96rem;
+      margin-bottom: 8px;
+    }
+
+    li.task-item {
+      list-style-type: none;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    li.task-item.checked {
+      color: #059669;
+      font-weight: 500;
+    }
+
+    .check-icon {
+      font-weight: bold;
+      color: #10b981;
+    }
+
+    /* Visual Illustration Card */
+    .visual-illustration-card {
+      background: #0f172a;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin: 24px 0 32px 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      border: 1px solid #334155;
+    }
+
+    .illustration-header {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .illustration-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: #0284c7;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .illustration-header h3 {
+      font-size: 1.2rem;
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    /* Diagram Box (Mermaid) */
+    .diagram-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin: 22px 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+
+    .diagram-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    /* Step Card */
+    .step-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 18px 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      border-left: 4px solid var(--sf-blue);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .step-badge {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #ffffff;
+      background: var(--sf-blue);
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .step-card h4 {
+      font-size: 1.15rem;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    /* Code Container & Syntax Styling */
+    .code-container {
+      background: var(--code-bg);
+      border-radius: var(--radius-md);
+      margin: 18px 0;
+      overflow: hidden;
+      border: 1px solid #334155;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #141418;
+      padding: 8px 16px;
+      border-bottom: 1px solid #2d2d35;
+    }
+
+    .lang-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+    }
+
+    .copy-btn {
+      background: #282832;
+      color: #cbd5e1;
+      border: 1px solid #444;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: var(--sf-blue);
+      color: #ffffff;
+      border-color: var(--sf-blue);
+    }
+
+    pre {
+      padding: 16px;
+      overflow-x: auto;
+      color: #f8f8f2;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    }
+
+    .inline-code {
+      background: #edf2f7;
+      color: #c026d3;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      border: 1px solid #e2e8f0;
+      font-weight: 600;
+    }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      text-align: left;
+      font-size: 0.94rem;
+    }
+
+    .styled-table th {
+      background: #f1f5f9;
+      color: var(--sf-navy);
+      font-weight: 700;
+      padding: 12px 16px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+
+    .styled-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+
+    .styled-table tr:hover {
+      background: #f8fafc;
+    }
+
+    /* Callout Boxes */
+    .callout-box {
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      margin: 20px 0;
+      border-left: 4px solid;
+    }
+
+    .callout-box.info {
+      background: #f0f9ff;
+      border-color: #0284c7;
+    }
+    .callout-box.info .callout-title { color: #0369a1; }
+
+    .callout-box.tip {
+      background: #fdf4ff;
+      border-color: #c084fc;
+    }
+    .callout-box.tip .callout-title { color: #7e22ce; }
+
+    .callout-box.warning {
+      background: #fffbeb;
+      border-color: #f59e0b;
+    }
+    .callout-box.warning .callout-title { color: #b45309; }
+
+    .callout-box.important {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+    .callout-box.important .callout-title { color: #1d4ed8; }
+
+    .callout-box.caution {
+      background: #fef2f2;
+      border-color: #ef4444;
+    }
+    .callout-box.caution .callout-title { color: #b91c1c; }
+
+    .callout-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .callout-body {
+      color: #334155;
+      font-size: 0.95rem;
+    }
+
+    hr.section-divider {
+      border: 0;
+      height: 1px;
+      background: #e2e8f0;
+      margin: 32px 0;
+    }
+
+    /* Image Container */
+    .doc-img-container {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .doc-img {
+      max-width: 100%;
+      border-radius: var(--radius-md);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border: 1px solid var(--border-color);
+    }
+    .img-caption {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    /* Back to top button */
+    .back-to-top {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--sf-blue);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 24px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(1, 118, 211, 0.4);
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      z-index: 99;
+    }
+
+    .back-to-top:hover {
+      background: var(--sf-dark-blue);
+      transform: translateY(-2px);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 32px 20px;
+      color: #64748b;
+      font-size: 0.88rem;
+      border-top: 1px solid var(--border-color);
+      background: #ffffff;
+      margin-top: 48px;
+    }
+
+    @media print {
+      .nav-wrapper, .back-to-top, .copy-btn, #progress-bar { display: none !important; }
+      .section-card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div id="progress-bar"></div>
+
+  <!-- Hero Header -->
+  <header class="hero">
+    <h1>Salesforce &amp; Snowflake Bi-Directional Integration with Slack AI Agent &amp; Model Context Protocol (MCP)</h1>
+    <p>Enterprise Technical Documentation &amp; Operational Reference</p>
+    <div class="badge-bar">
+      <span class="badge success">Production Ready</span>
+      <span class="badge ">Salesforce Lightning</span>
+      <span class="badge ">Enterprise Architecture</span>
+      <span class="badge ">Complete Implementation</span>
+      <span class="badge ">Snowflake DWH</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Sticky Navigation Tabs -->
+    <div class="nav-wrapper">
+      <nav class="nav-tabs">
+        <a href="#sec-1-executive-summary-core-objectives" class="nav-tab">Executive Summary &amp; Core Objectives</a>
+        <a href="#sec-2-end-to-end-implementation-playbook-how-we-created-it-step-by-step" class="nav-tab">End-to-End Implementation Playbook (How We Created It - Step-by-Step)</a>
+        <a href="#sec-3-bi-directional-data-transfer-storage-specifications" class="nav-tab">Bi-Directional Data Transfer &amp; Storage Specifications</a>
+        <a href="#sec-4-detailed-architecture-workflows" class="nav-tab">Detailed Architecture &amp; Workflows</a>
+        <a href="#sec-5-ui-presentations-unified-dossier-standard" class="nav-tab">UI Presentations &amp; Unified Dossier Standard</a>
+        <a href="#sec-6-directory-codebase-layout" class="nav-tab">Directory &amp; Codebase Layout</a>
+        <a href="#sec-7-live-verification-test-matrix" class="nav-tab">Live Verification &amp; Test Matrix</a>
+        <a href="#sec-8-operations-troubleshooting-guide" class="nav-tab">Operations &amp; Troubleshooting Guide</a>
+        <a href="#sec-9-future-reference-architectural-enhancement-roadmap" class="nav-tab">Future Reference &amp; Architectural Enhancement Roadmap</a>
+      </nav>
+    </div>
+
+    <!-- Document Content Sections -->
+    <p>A comprehensive architectural reference, technical specification, and operational guide for the <strong>real-time, event-driven, bi-directional integration</strong> between <strong>Salesforce (<code class="inline-code">learn_dc</code>)</strong> and <strong>Snowflake Cloud Data Warehouse (<code class="inline-code">hjyxziv-mi58790</code>)</strong>, unified by an autonomous <strong>Slack AI Agent (Google Gemini 3.6 Flash)</strong> and the <strong><code class="inline-code">slackBotAgent</code> Lightning Web Component</strong> via the <strong>Model Context Protocol (MCP)</strong>.</p>
+<hr class="section-divider"/>
+<section class="section-card" id="sec-1-executive-summary-core-objectives">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 1. Executive Summary & Core Objectives</h2>
+
+    <div class="visual-illustration-card">
+      <div class="illustration-header">
+        <span class="illustration-tag">Enterprise Two-Tier Data Architecture</span>
+        <h3>Tier 1: Continuous 5s Sync Daemon & Tier 2: Isolated MCP Secure View</h3>
+      </div>
+      <svg viewBox="0 0 960 360" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+        <!-- Tier 1 Container -->
+        <rect x="40" y="30" width="420" height="300" rx="10" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+        <rect x="40" y="30" width="420" height="36" rx="10" fill="#032d60"/>
+        <text x="60" y="53" fill="#ffffff" font-size="13" font-weight="bold">TIER 1: Bi-Directional Real-Time Sync Layer</text>
+
+        <!-- Salesforce Sync Node -->
+        <rect x="60" y="80" width="170" height="110" rx="8" fill="#0176D3"/>
+        <text x="75" y="105" fill="#ffffff" font-size="13" font-weight="bold">Salesforce CRM</text>
+        <text x="75" y="123" fill="#bfdbfe" font-size="11">Account Object</text>
+        <text x="75" y="142" fill="#ffffff" font-size="10">• Health_Score__c</text>
+        <text x="75" y="158" fill="#ffffff" font-size="10">• Usage_Hours__c</text>
+        <text x="75" y="174" fill="#ffffff" font-size="10">• Churn_Risk__c</text>
+
+        <!-- Snowflake Base Node -->
+        <rect x="270" y="80" width="170" height="110" rx="8" fill="#0ea5e9"/>
+        <text x="285" y="105" fill="#ffffff" font-size="13" font-weight="bold">Snowflake Base</text>
+        <text x="285" y="123" fill="#e0f2fe" font-size="11">LEARNDC_DB.ANALYTICS</text>
+        <text x="285" y="142" fill="#ffffff" font-size="10">• ACCOUNT_ANALYTICS</text>
+        <text x="285" y="158" fill="#ffffff" font-size="10">• MERGE INTO DDL</text>
+        <text x="285" y="174" fill="#ffffff" font-size="10">• Real-Time Ingestion</text>
+
+        <!-- 5s Sync Daemon Badge -->
+        <rect x="60" y="210" width="380" height="42" rx="6" fill="#0f172a" stroke="#38bdf8"/>
+        <text x="80" y="230" fill="#38bdf8" font-size="12" font-weight="bold">⚡ SnowflakeSyncDaemon (5-Second Loop)</text>
+        <text x="80" y="244" fill="#94a3b8" font-size="10">Polls delta modifications & writes back Last_Snowflake_Sync__c</text>
+
+        <rect x="60" y="262" width="380" height="48" rx="6" fill="#0f172a" stroke="#22c55e"/>
+        <text x="80" y="282" fill="#4ade80" font-size="11" font-weight="bold">⚡ On-Demand Live Sync (0-Second SLA)</text>
+        <text x="80" y="296" fill="#94a3b8" font-size="10">Executes on /account-brief before returning dossier</text>
+
+        <!-- Tier 2 Container (Right) -->
+        <rect x="500" y="30" width="420" height="300" rx="10" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+        <rect x="500" y="30" width="420" height="36" rx="10" fill="#4A154B"/>
+        <text x="520" y="53" fill="#ffffff" font-size="13" font-weight="bold">TIER 2: MCP Secure Agent Consumption</text>
+
+        <!-- Dedicated MCP Database -->
+        <rect x="520" y="80" width="380" height="60" rx="8" fill="#0f172a" stroke="#29B5E8"/>
+        <text x="535" y="102" fill="#29B5E8" font-size="12" font-weight="bold">🔒 Dedicated DWH: LEARNDC_MCP_DB</text>
+        <text x="535" y="122" fill="#cbd5e1" font-size="11">Schema: SECURE_ANALYTICS • Role: MCP_AGENT_READER_ROLE</text>
+
+        <!-- Secure View with 8 Fields -->
+        <rect x="520" y="150" width="380" height="80" rx="8" fill="#0f172a" stroke="#a855f7"/>
+        <text x="535" y="172" fill="#c084fc" font-size="12" font-weight="bold">👁️ Secure View: V_ACCOUNT_INSIGHTS</text>
+        <text x="535" y="190" fill="#94a3b8" font-size="10">Strictly 8 Sanitized Fields (Zero Underlying Table Exposure):</text>
+        <text x="535" y="206" fill="#f1f5f9" font-size="10" font-family="monospace">SF_ACCOUNT_ID, NAME, SLA_TIER, HEALTH_SCORE, STATUS, USAGE, CHURN, TS</text>
+
+        <!-- Unified Dossier UX -->
+        <rect x="520" y="240" width="380" height="70" rx="8" fill="#0f172a" stroke="#22c55e"/>
+        <text x="535" y="262" fill="#4ade80" font-size="12" font-weight="bold">✨ Unified Dossier (Zero Platform Branding)</text>
+        <text x="535" y="280" fill="#cbd5e1" font-size="11">Gemini weaves CRM + DWH telemetry into single executive view</text>
+        <text x="535" y="296" fill="#94a3b8" font-size="10">Never mentions "Snowflake" or "Salesforce" to end business user</text>
+      </svg>
+    </div>
+  
+<p>Enterprise customer intelligence spans across two operational pillars:</p>
+<ol class="styled-ordered-list">
+<li><strong>Salesforce CRM</strong>: Holds transactional customer relationship data, account ownership, customer success manager (CSM) assignments, primary contacts, email communication intelligence, and calendar interactions.</li>
+<li><strong>Snowflake Data Warehouse</strong>: Houses high-volume platform telemetry, compute consumption, feature usage logs, and machine learning risk models (Health Scores, Usage Hours, Churn Risk).</li>
+</ol>
+<p>To deliver a seamless, secure, and unified customer experience to business users, this architecture implements a <strong>two-tier data and agent framework</strong>:</p>
+<ul class="styled-list">
+<li><strong>Tier 1: Bi-Directional Sync Layer</strong>: Maintains continuous data synchronization between Salesforce and the Snowflake base analytics table (<code class="inline-code">LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS</code>).</li>
+<li><strong>Tier 2: Model Context Protocol (MCP) Isolation & Presentation Layer</strong>: Protects sensitive warehouse and CRM infrastructure through a dedicated database (<code class="inline-code">LEARNDC_MCP_DB</code>), a restricted <strong>Secure View</strong> (<code class="inline-code">V_ACCOUNT_INSIGHTS</code>) with strictly 8 telemetry fields, a least-privileged read-only role (<code class="inline-code">MCP_AGENT_READER_ROLE</code>), and a <strong>Zero Platform Brand Leakage</strong> unified dossier UX.</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">CODE</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-">┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   TWO-TIER ARCHITECTURE                                    │
+├────────────────────────────────────────┬────────────────────────────────────────────────────┤
+│   TIER 1: BI-DIRECTIONAL SYNC LAYER    │       TIER 2: MCP SECURE AGENT CONSUMPTION LAYER    │
+│                                        │                                                    │
+│  Salesforce CRM Org (learn_dc)         │  Snowflake MCP Database (LEARNDC_MCP_DB)           │
+│  └── Account Object                    │  └── SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS (8 Fields)│
+│       ▲            │ (5s daemon &amp; trg) │       ▲                                            │
+│       │            ▼                   │       │ (Read-Only via MCP_AGENT_READER_ROLE)      │
+│  Snowflake Base DWH (LEARNDC_DB)       │  Native TypeScript Snowflake MCP Client            │
+│  └── ANALYTICS.ACCOUNT_ANALYTICS       │       ▲                                            │
+│                                        │       │                                            │
+│                                        │  Google Gemini 3.6 Flash AI Agent                  │
+│                                        │       │                                            │
+│                                        │  Unified Single Dossier (Zero Platform Branding)   │
+│                                        │  ├── Slack Bot (/account-brief, DM, @bot)          │
+│                                        │  └── Salesforce LWC (slackBotAgent Feed)           │
+└────────────────────────────────────────┴────────────────────────────────────────────────────┘</code></pre>
+            </div>
+          <h3 class="sub-title">Key Capabilities Built & Verified:</h3>
+<ul class="styled-list">
+<li><strong>⚡ 2-Prong Real-Time Sync Engine (Salesforce ⇄ Snowflake)</strong>:</li>
+<li><strong>Prong 1 (5-Second Background Daemon)</strong>: <code class="inline-code">SnowflakeSyncDaemon</code> runs continuously every 5 seconds, querying modified Accounts in Salesforce, executing <code class="inline-code">MERGE INTO LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS</code> in Snowflake, and writing back <code class="inline-code">Last_Snowflake_Sync__c</code> and telemetry metrics to Salesforce.</li>
+<li><strong>Prong 2 (0-Second On-Demand Live Sync)</strong>: When an account is queried via Slack Bot (<code class="inline-code">/account-brief</code>, <code class="inline-code">/snowflake</code>) or LWC, <code class="inline-code">getAccountAnalytics</code> executes live reconciliation with Salesforce immediately (~150ms) before returning.</li>
+<li><strong>🔒 Dedicated Snowflake MCP Database & Secure View</strong>:</li>
+<li>Dedicated database <code class="inline-code">LEARNDC_MCP_DB</code> and schema <code class="inline-code">SECURE_ANALYTICS</code> created exclusively for AI agent access.</li>
+<li><code class="inline-code">V_ACCOUNT_INSIGHTS</code> Secure View isolates and exposes <strong>strictly 8 sanitized telemetry fields</strong>:</li>
+</ul>
+<p>    <code class="inline-code">SF_ACCOUNT_ID</code>, <code class="inline-code">ACCOUNT_NAME</code>, <code class="inline-code">SLA_TIER</code>, <code class="inline-code">HEALTH_SCORE</code>, <code class="inline-code">HEALTH_STATUS</code> (computed), <code class="inline-code">USAGE_HOURS</code>, <code class="inline-code">CHURN_RISK</code>, <code class="inline-code">SNOWFLAKE_LAST_UPDATED</code>.</p>
+<ul class="styled-list">
+<li>Protects sensitive financial data (<code class="inline-code">ANNUAL_REVENUE</code>), internal contact information, and base table schemas.</li>
+<li><strong>🛡️ Least-Privilege Read-Only Role (<code class="inline-code">MCP_AGENT_READER_ROLE</code>)</strong>:</li>
+<li>Granted <code class="inline-code">USAGE</code> on warehouse <code class="inline-code">COMPUTE_WH</code>, database <code class="inline-code">LEARNDC_MCP_DB</code>, schema <code class="inline-code">SECURE_ANALYTICS</code>, and <code class="inline-code">SELECT</code> on <code class="inline-code">V_ACCOUNT_INSIGHTS</code>.</li>
+<li>Zero base table access to <code class="inline-code">LEARNDC_DB</code> and zero write permissions (<code class="inline-code">INSERT</code>, <code class="inline-code">UPDATE</code>, <code class="inline-code">DELETE</code> are strictly blocked).</li>
+<li><strong>🔌 Native TypeScript Model Context Protocol (MCP) Client</strong>:</li>
+<li>Implemented <code class="inline-code">slack-gemini-agent/src/mcp/snowflakeMcpClient.ts</code> exposing MCP tools: <code class="inline-code">snowflake_get_account_telemetry</code> and <code class="inline-code">snowflake_list_at_risk_accounts</code>.</li>
+<li>Operates side-by-side with <code class="inline-code">salesforceMcpClient.ts</code> in the Gemini tool registry.</li>
+<li><strong>🎭 Zero Platform Brand Leakage (Unified Single Dossier)</strong>:</li>
+<li>Business users in Slack and Salesforce see a single, unified Account Dossier.</li>
+<li>Technical and infrastructure labels like "Salesforce CRM", "Snowflake Data Warehouse", "CRM Vitals", and "LEARNDC_DB" are completely eliminated from user-facing responses.</li>
+<li>Data is logically categorized under intuitive business headers: <strong>Account Overview</strong>, <strong>Account Health & Platform Utilization</strong>, and <strong>Recent Activity & Communications</strong>.</li>
+<li><strong>🔄 Circular Loop Prevention</strong>:</li>
+<li>Deterministic CRM field hashing (<code class="inline-code">Name</code>, <code class="inline-code">Industry</code>, <code class="inline-code">Type</code>, <code class="inline-code">AnnualRevenue</code>, <code class="inline-code">SLA__c</code>, <code class="inline-code">CustomerPriority__c</code>, <code class="inline-code">CSM_Email__c</code>) ensures writebacks of <code class="inline-code">Last_Snowflake_Sync__c</code> or telemetry fields never re-trigger outbound syncs.</li>
+<li><strong>⏱️ Latency Benchmark</strong>:</li>
+<li><strong>Background Event Sync</strong>: <strong>3 to 5 seconds</strong> from the moment a user clicks "Save" on an Account in Salesforce to Snowflake database update.</li>
+<li><strong>Interactive / Bot Inquiries</strong>: <strong>0 seconds</strong> (instant live fresh data).</li>
+</ul>
+<h3 class="sub-title">1.1 Architectural Evolution: Baseline (What It Was Doing) vs. Enhanced MCP (What We Created)</h3>
+<p>To understand the engineering behind this architecture, review the operational characteristics of the initial state versus the production MCP model:</p>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Architectural Dimension</th><th>Initial Baseline Implementation (What It Was Doing)</th><th>Enhanced MCP Architecture (What We Created)</th></tr></thead><tbody><tr><td><strong>Snowflake Database Layout</strong></td><td>Single database (<code class="inline-code">LEARNDC_DB</code>) housing both integration staging and raw analytics tables.</td><td><strong>Two-Tier Separation</strong>: <code class="inline-code">LEARNDC_DB</code> (Base Storage) + <code class="inline-code">LEARNDC_MCP_DB</code> (Isolated Agent Database).</td></tr><tr><td><strong>Access Control & Permissions</strong></td><td>Agent connected using high-privilege roles (<code class="inline-code">ACCOUNTADMIN</code> / <code class="inline-code">SYSADMIN</code>) with broad table privileges.</td><td><strong>Least-Privilege Role</strong>: <code class="inline-code">MCP_AGENT_READER_ROLE</code> with strictly read-only (<code class="inline-code">SELECT</code>) on a Secure View.</td></tr><tr><td><strong>Data Exposure & Surface Area</strong></td><td>All 13 columns exposed to the bot, including sensitive financial data (<code class="inline-code">ANNUAL_REVENUE</code>) and internal CRM emails.</td><td><strong>Data Sanitization</strong>: Exposes <strong>strictly 8 pre-approved telemetry fields</strong> via <code class="inline-code">V_ACCOUNT_INSIGHTS</code>.</td></tr><tr><td><strong>Security Layer</strong></td><td>Direct access to raw physical table <code class="inline-code">ACCOUNT_ANALYTICS</code> with potential write capabilities.</td><td><strong>Zero Base Table Access</strong>: <code class="inline-code">MCP_AGENT_READER_ROLE</code> cannot see or query <code class="inline-code">LEARNDC_DB</code> directly. Write attempts (<code class="inline-code">INSERT</code>) are hard-blocked.</td></tr><tr><td><strong>Agent Integration Protocol</strong></td><td>Custom database queries directly inside general service handlers.</td><td><strong>Model Context Protocol (MCP)</strong>: Native TypeScript MCP client (<code class="inline-code">SnowflakeMcpClient</code>) adhering to standardized agent tooling.</td></tr><tr><td><strong>User Experience & Branding</strong></td><td>Fragmented presentation: Slack & LWC cards prominently labeled <em>"Salesforce CRM Vitals"</em> vs. <em>"Snowflake Data Warehouse Telemetry"</em>, displaying internal database table names (<code class="inline-code">LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS</code>).</td><td><strong>Zero Platform Brand Leakage</strong>: Users receive a single, unified <strong>Account Dossier</strong> with logical business headings (<strong>Account Overview</strong>, <strong>Account Health & Platform Utilization</strong>, <strong>Recent Activity & Communications</strong>).</td></tr><tr><td><strong>Integration Layer Integrity</strong></td><td>Risk of agent modifications breaking bi-directional sync.</td><td><strong>Isolated Consumption</strong>: Tier 1 bi-directional sync daemon (5-second poller) remains 100% untouched and independent.</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-2-end-to-end-implementation-playbook-how-we-created-it-step-by-step">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 2. End-to-End Implementation Playbook (How We Created It - Step-by-Step)</h2>
+<p>This section provides the complete chronological engineering playbook of how the Snowflake MCP layer, security roles, TypeScript client, and unified dossier UX were created and tested.</p>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 1</span>
+                <h4>Snowflake Infrastructure Provisioning (DDL Execution)</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Action</strong>: Created a dedicated database and schema in Snowflake exclusively for agent interactions, completely separating agent read operations from the transactional CRM staging database.</li>
+<li><strong>Snowflake Worksheet SQL</strong>:</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">  CREATE DATABASE IF NOT EXISTS LEARNDC_MCP_DB COMMENT = &#039;Dedicated Snowflake Database for Model Context Protocol (MCP) Agent Access&#039;;
+  CREATE SCHEMA IF NOT EXISTS LEARNDC_MCP_DB.SECURE_ANALYTICS COMMENT = &#039;Sanitized Secure Views for AI Agent Consumption&#039;;</code></pre>
+            </div>
+          
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 2</span>
+                <h4>Cross-Database Secure View Design & Implementation</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Action</strong>: Designed <code class="inline-code">V_ACCOUNT_INSIGHTS</code> inside <code class="inline-code">LEARNDC_MCP_DB.SECURE_ANALYTICS</code> reading from the underlying table <code class="inline-code">LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS</code>.</li>
+<li><strong>Design Considerations</strong>:</li>
+<li>Filtered out confidential CRM fields (e.g. <code class="inline-code">ANNUAL_REVENUE</code>, <code class="inline-code">CSM_EMAIL</code>, internal Salesforce IDs).</li>
+<li>Selected <strong>strictly 8 essential fields</strong>: <code class="inline-code">SF_ACCOUNT_ID</code>, <code class="inline-code">ACCOUNT_NAME</code>, <code class="inline-code">SLA_TIER</code>, <code class="inline-code">HEALTH_SCORE</code>, <code class="inline-code">HEALTH_STATUS</code> (computed), <code class="inline-code">USAGE_HOURS</code>, <code class="inline-code">CHURN_RISK</code>, <code class="inline-code">SNOWFLAKE_LAST_UPDATED</code>.</li>
+<li>Inlined business logic: Calculated <code class="inline-code">HEALTH_STATUS</code> automatically (<code class="inline-code">&gt;= 80: EXCELLENT</code>, <code class="inline-code">&gt;= 60: FAIR</code>, <code class="inline-code">&lt; 60: AT RISK</code>).</li>
+<li>Utilized <strong><code class="inline-code">SECURE VIEW</code></strong>: Guarantees that unauthorized users cannot inspect the view definition via <code class="inline-code">GET_DDL</code> and prevents optimizer pushdown vulnerabilities.</li>
+<li><strong>Snowflake Worksheet SQL</strong>:</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">  CREATE OR REPLACE SECURE VIEW LEARNDC_MCP_DB.SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS 
+  COMMENT = &#039;Sanitized Account Insights View for MCP Agent with strictly 8 fields and zero base table exposure&#039;
+  AS
+  SELECT 
+      SF_ACCOUNT_ID,
+      ACCOUNT_NAME,
+      SLA_TIER,
+      HEALTH_SCORE,
+      CASE 
+          WHEN HEALTH_SCORE &gt;= 80 THEN &#039;EXCELLENT&#039;
+          WHEN HEALTH_SCORE &gt;= 60 THEN &#039;FAIR&#039;
+          ELSE &#039;AT RISK&#039;
+      END AS HEALTH_STATUS,
+      USAGE_HOURS,
+      CHURN_RISK,
+      SNOWFLAKE_LAST_UPDATED
+  FROM LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS;</code></pre>
+            </div>
+          
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 3</span>
+                <h4>Least-Privilege Security Role Provisioning</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Action</strong>: Created <code class="inline-code">MCP_AGENT_READER_ROLE</code> adhering strictly to the principle of least privilege.</li>
+<li><strong>Privilege Delegation</strong>:</li>
+<li><code class="inline-code">USAGE</code> on warehouse <code class="inline-code">COMPUTE_WH</code>.</li>
+<li><code class="inline-code">USAGE</code> on database <code class="inline-code">LEARNDC_MCP_DB</code>.</li>
+<li><code class="inline-code">USAGE</code> on schema <code class="inline-code">LEARNDC_MCP_DB.SECURE_ANALYTICS</code>.</li>
+<li><code class="inline-code">SELECT</code> on view <code class="inline-code">LEARNDC_MCP_DB.SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS</code>.</li>
+<li>Granted role to integration user <code class="inline-code">SUMITGUPTA05</code>.</li>
+<li><strong>Critical Security Boundary</strong>: Zero permissions granted on <code class="inline-code">LEARNDC_DB</code>. The view executes with creator rights (<code class="inline-code">ACCOUNTADMIN</code>), allowing the agent to read sanitized rows while being completely blocked from accessing underlying base tables directly.</li>
+<li><strong>Snowflake Worksheet SQL</strong>:</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">  CREATE ROLE IF NOT EXISTS MCP_AGENT_READER_ROLE COMMENT = &#039;Least-privileged read-only role for Slack Gemini MCP Agent&#039;;
+
+  GRANT USAGE ON WAREHOUSE COMPUTE_WH TO ROLE MCP_AGENT_READER_ROLE;
+  GRANT USAGE ON DATABASE LEARNDC_MCP_DB TO ROLE MCP_AGENT_READER_ROLE;
+  GRANT USAGE ON SCHEMA LEARNDC_MCP_DB.SECURE_ANALYTICS TO ROLE MCP_AGENT_READER_ROLE;
+  GRANT SELECT ON VIEW LEARNDC_MCP_DB.SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS TO ROLE MCP_AGENT_READER_ROLE;
+
+  GRANT ROLE MCP_AGENT_READER_ROLE TO USER SUMITGUPTA05;</code></pre>
+            </div>
+          
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 4</span>
+                <h4>Security & Write-Protection Verification</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Action</strong>: Tested role restrictions in a Snowflake Worksheet:</li>
+<li><strong>Test 1 (Read Verification)</strong>:</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">    USE ROLE MCP_AGENT_READER_ROLE;
+    SELECT * FROM LEARNDC_MCP_DB.SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS LIMIT 5;</code></pre>
+            </div>
+          <p>    <em>Result</em>: Succeeded, returned live accounts with exact 8 columns.</p>
+<ul class="styled-list">
+<li><strong>Test 2 (Write Denial Verification)</strong>:</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">    USE ROLE MCP_AGENT_READER_ROLE;
+    INSERT INTO LEARNDC_MCP_DB.SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS (SF_ACCOUNT_ID, ACCOUNT_NAME) VALUES (&#039;001test&#039;, &#039;Test Account&#039;);</code></pre>
+            </div>
+          <p>    <em>Result</em>: Correctly failed with <code class="inline-code">SQL compilation error: Object &#039;V_ACCOUNT_INSIGHTS&#039; does not exist or not authorized</code>.</p>
+<ul class="styled-list">
+<li><strong>Test 3 (Base Table Access Denial Verification)</strong>:</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">    USE ROLE MCP_AGENT_READER_ROLE;
+    SELECT * FROM LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS;</code></pre>
+            </div>
+          <p>    <em>Result</em>: Correctly failed with <code class="inline-code">SQL compilation error: Database &#039;LEARNDC_DB&#039; does not exist or not authorized</code>.</p>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 5</span>
+                <h4>Native TypeScript Snowflake MCP Client Development</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Action</strong>: Created <code class="inline-code">slack-gemini-agent/src/mcp/snowflakeMcpClient.ts</code> as a singleton MCP client conforming to the Model Context Protocol standard:</li>
+<li>Established connections strictly using <code class="inline-code">role: &#039;MCP_AGENT_READER_ROLE&#039;</code>, <code class="inline-code">database: &#039;LEARNDC_MCP_DB&#039;</code>, and <code class="inline-code">schema: &#039;SECURE_ANALYTICS&#039;</code>.</li>
+<li>Defined MCP tools:</li>
+<li><code class="inline-code">snowflake_get_account_telemetry</code>: Input <code class="inline-code">{ accountIdentifier: string }</code> -> queries <code class="inline-code">V_ACCOUNT_INSIGHTS</code> by Account ID or Account Name.</li>
+<li><code class="inline-code">snowflake_list_at_risk_accounts</code>: Input <code class="inline-code">{ maxResults: number }</code> -> queries <code class="inline-code">V_ACCOUNT_INSIGHTS</code> where <code class="inline-code">CHURN_RISK = &#039;HIGH&#039; OR HEALTH_SCORE &lt; 60</code>.</li>
+<li>Returns typed <code class="inline-code">SecureAccountTelemetryDTO</code> objects containing strictly the 8 fields.</li>
+</ul>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 6</span>
+                <h4>Multi-MCP Registration & Agent Orchestration</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Action</strong>: Integrated the Snowflake MCP client alongside the Salesforce MCP client in the Node.js application:</li>
+<li>In <code class="inline-code">slack-gemini-agent/src/index.ts</code>: Called <code class="inline-code">await snowflakeMcpClient.initialize()</code> on application bootstrap.</li>
+<li>In <code class="inline-code">slack-gemini-agent/src/gemini/agent.ts</code>: Concatenated tools from both <code class="inline-code">salesforceMcpClient.getTools()</code> and <code class="inline-code">snowflakeMcpClient.getTools()</code>.</li>
+<li>Built dynamic tool router: When Gemini invokes a tool, <code class="inline-code">agent.ts</code> checks <code class="inline-code">snowflakeMcpClient.hasTool(name)</code> and routes execution directly to the Snowflake MCP client.</li>
+</ul>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 7</span>
+                <h4>System Prompt Engineering for Zero Brand Leakage</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Action</strong>: Updated <code class="inline-code">slack-gemini-agent/src/gemini/prompt.ts</code> with explicit user presentation guidelines:</li>
+<li>Strict instruction: Never mention backend platform names ("Salesforce", "Snowflake", "CRM", "Warehouse", or table identifiers).</li>
+<li>Enforced single unified dossier schema:</li>
+<li><strong>Header</strong>: <code class="inline-code">📋 Account Dossier: [Account Name]</code></li>
+<li><strong>Account Overview</strong>: Primary Contact, Contact Email, Account Manager, Industry.</li>
+<li><strong>Account Health & Platform Utilization</strong>: Health Score, Utilization Hours, Churn Risk, Service Tier.</li>
+<li><strong>Recent Activity & Communications</strong>: Executive conversation summaries and next action items.</li>
+</ul>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 8</span>
+                <h4>Slack Bot Command Refactoring (<code class="inline-code">/account-brief</code>)</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Action</strong>: Modified <code class="inline-code">slack-gemini-agent/src/slack/commands.ts</code>:</li>
+<li>Updated <code class="inline-code">/account-brief</code> slash command to invoke <code class="inline-code">snowflakeMcpClient.callTool(&#039;snowflake_get_account_telemetry&#039;, ...)</code> instead of querying base tables.</li>
+<li>Rebuilt the Slack Block Kit card to eliminate platform separation headers, rendering a clean, single-card executive dossier.</li>
+</ul>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 9</span>
+                <h4>Salesforce LWC & Apex Controller Alignment</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Action</strong>: Updated the in-CRM chat experience:</li>
+<li>In <code class="inline-code">force-app/main/default/lwc/slackBotAgent/slackBotAgent.js</code>: Renamed card section titles from platform labels to business terms (<code class="inline-code">Account Overview</code>, <code class="inline-code">Account Health &amp; Platform Utilization</code>, <code class="inline-code">Recent Activity &amp; Communications</code>).</li>
+<li>In <code class="inline-code">force-app/main/default/classes/SlackBotAgentController.cls</code>: Removed platform brand references from slash command responses and fallback messages.</li>
+</ul>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 10</span>
+                <h4>Compilation, Deployment & Apex Test Validation</h4>
+              </div>
+          <ul class="styled-list">
+<li><strong>Action</strong>: Validated all changes across Node.js and Salesforce:</li>
+<li>Ran <code class="inline-code">npm run build</code> in <code class="inline-code">slack-gemini-agent</code> -> Exited with code 0 (zero TypeScript errors).</li>
+<li>Deployed Salesforce components via <code class="inline-code">sf project deploy start -o learn_dc</code> -> Successfully deployed <code class="inline-code">SlackBotAgentController</code> and <code class="inline-code">slackBotAgent</code>.</li>
+<li>Executed Apex test suite via <code class="inline-code">sf apex run test -n AccountSnowflakeTriggerTest -n SlackBotAgentControllerTest -o learn_dc</code> -> 18 / 18 tests passed (100% pass rate).</li>
+</ul>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-3-bi-directional-data-transfer-storage-specifications">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 3. Bi-Directional Data Transfer & Storage Specifications</h2>
+<h3 class="sub-title">A. Outbound: Salesforce ➔ Snowflake (CRM Identity & Commercial Context)</h3>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Salesforce Source Field</th><th>Snowflake Target Column</th><th>Data Type</th><th>Description / Purpose</th></tr></thead><tbody><tr><td><code class="inline-code">Id</code></td><td><code class="inline-code">SF_ACCOUNT_ID</code></td><td><code class="inline-code">VARCHAR(18)</code></td><td><strong>Primary Key</strong>: Uniquely ties records across both platforms.</td></tr><tr><td><code class="inline-code">Name</code></td><td><code class="inline-code">ACCOUNT_NAME</code></td><td><code class="inline-code">VARCHAR(255)</code></td><td>Official business name of the account.</td></tr><tr><td><code class="inline-code">Industry</code></td><td><code class="inline-code">INDUSTRY</code></td><td><code class="inline-code">VARCHAR(100)</code></td><td>Vertical classification (e.g. Aerospace, Technology).</td></tr><tr><td><code class="inline-code">Type</code></td><td><code class="inline-code">ACCOUNT_TYPE</code></td><td><code class="inline-code">VARCHAR(100)</code></td><td>Relationship classification (Customer - Direct, Partner, etc.).</td></tr><tr><td><code class="inline-code">AnnualRevenue</code></td><td><code class="inline-code">ANNUAL_REVENUE</code></td><td><code class="inline-code">NUMBER(18,2)</code></td><td>ARR or contracted customer value baseline.</td></tr><tr><td><code class="inline-code">SLA__c</code></td><td><code class="inline-code">SLA_TIER</code></td><td><code class="inline-code">VARCHAR(50)</code></td><td>Commercial support entitlement (Platinum, Gold, Silver, Bronze).</td></tr><tr><td><code class="inline-code">CustomerPriority__c</code></td><td><code class="inline-code">CUSTOMER_PRIORITY</code></td><td><code class="inline-code">VARCHAR(50)</code></td><td>Account tier priority (High, Medium, Low).</td></tr><tr><td><code class="inline-code">CSM_Email__c</code></td><td><code class="inline-code">CSM_EMAIL</code></td><td><code class="inline-code">VARCHAR(255)</code></td><td>Assigned Customer Success Manager email address.</td></tr><tr><td><code class="inline-code">SystemModstamp</code></td><td><code class="inline-code">SF_LAST_MODIFIED</code></td><td><code class="inline-code">TIMESTAMP_NTZ</code></td><td>Timestamp of last modification in Salesforce CRM.</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+<h3 class="sub-title">B. Inbound: Snowflake ➔ Salesforce (Operational Analytics & Health)</h3>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Snowflake Source Column</th><th>Salesforce Target Field</th><th>Field Type</th><th>Description / Purpose</th></tr></thead><tbody><tr><td><code class="inline-code">HEALTH_SCORE</code></td><td><code class="inline-code">Health_Score__c</code></td><td><code class="inline-code">Number(3, 0)</code></td><td>Operational health rating (1–100) based on telemetry.</td></tr><tr><td><code class="inline-code">USAGE_HOURS</code></td><td><code class="inline-code">Usage_Hours__c</code></td><td><code class="inline-code">Number(10, 2)</code></td><td>Monthly platform or compute hours consumed.</td></tr><tr><td><code class="inline-code">CHURN_RISK</code></td><td><code class="inline-code">Churn_Risk__c</code></td><td><code class="inline-code">Text(20)</code></td><td>Churn classification (<code class="inline-code">LOW</code>, <code class="inline-code">MEDIUM</code>, <code class="inline-code">HIGH</code>).</td></tr><tr><td><code class="inline-code">SNOWFLAKE_LAST_UPDATED</code></td><td><code class="inline-code">Last_Snowflake_Sync__c</code></td><td><code class="inline-code">DateTime</code></td><td>Verification timestamp confirming when Snowflake synced back.</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+<h3 class="sub-title">C. Snowflake DDL Specification (<code class="inline-code">ACCOUNT_ANALYTICS</code>)</h3>
+<p>Live database deployed on <strong><code class="inline-code">hjyxziv-mi58790</code></strong>:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">-- 1. Database &amp; Schema Initialization
+CREATE DATABASE IF NOT EXISTS LEARNDC_DB COMMENT = &#039;Learn DC CRM &amp; Snowflake Integration Database&#039;;
+CREATE SCHEMA IF NOT EXISTS LEARNDC_DB.ANALYTICS COMMENT = &#039;Customer CRM &amp; Telemetry Analytics&#039;;
+
+-- 2. Unified Account Analytics Table
+CREATE TABLE IF NOT EXISTS LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS (
+    -- CRM Attributes (Pushed Outbound from Salesforce)
+    SF_ACCOUNT_ID          VARCHAR(18) NOT NULL PRIMARY KEY,
+    ACCOUNT_NAME           VARCHAR(255) NOT NULL,
+    INDUSTRY               VARCHAR(100),
+    ACCOUNT_TYPE           VARCHAR(100),
+    ANNUAL_REVENUE         NUMBER(18,2),
+    SLA_TIER               VARCHAR(50),
+    CUSTOMER_PRIORITY      VARCHAR(50),
+    CSM_EMAIL              VARCHAR(255),
+    SF_LAST_MODIFIED       TIMESTAMP_NTZ,
+    
+    -- Warehouse &amp; Telemetry Attributes (Managed by Snowflake / Inbound to SF)
+    HEALTH_SCORE           NUMBER(3,0) DEFAULT 85,
+    USAGE_HOURS            NUMBER(10,2) DEFAULT 142.50,
+    CHURN_RISK             VARCHAR(20) DEFAULT &#039;LOW&#039;,
+    SNOWFLAKE_LAST_UPDATED TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
+-- 3. Role Access Grants (Allows SYSADMIN, ACCOUNTADMIN, and PUBLIC access)
+GRANT USAGE ON DATABASE LEARNDC_DB TO ROLE SYSADMIN;
+GRANT USAGE ON SCHEMA LEARNDC_DB.ANALYTICS TO ROLE SYSADMIN;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS TO ROLE SYSADMIN;
+
+GRANT USAGE ON DATABASE LEARNDC_DB TO ROLE PUBLIC;
+GRANT USAGE ON SCHEMA LEARNDC_DB.ANALYTICS TO ROLE PUBLIC;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS TO ROLE PUBLIC;</code></pre>
+            </div>
+          <hr class="section-divider"/>
+<h3 class="sub-title">D. Snowflake Secure MCP Layer DDL (<code class="inline-code">LEARNDC_MCP_DB</code> & <code class="inline-code">V_ACCOUNT_INSIGHTS</code>)</h3>
+<p>To provide isolated, read-only, sanitized access for the AI Agent via MCP without exposing base tables or sensitive CRM financial fields, a dedicated database, secure view, and role were provisioned on <strong><code class="inline-code">hjyxziv-mi58790</code></strong>:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">-- 1. Create Dedicated MCP Database and Schema
+CREATE DATABASE IF NOT EXISTS LEARNDC_MCP_DB COMMENT = &#039;Dedicated Snowflake Database for Model Context Protocol (MCP) Agent Access&#039;;
+CREATE SCHEMA IF NOT EXISTS LEARNDC_MCP_DB.SECURE_ANALYTICS COMMENT = &#039;Sanitized Secure Views for AI Agent Consumption&#039;;
+
+-- 2. Create Secure View with Strictly 8 Fields
+CREATE OR REPLACE SECURE VIEW LEARNDC_MCP_DB.SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS 
+COMMENT = &#039;Sanitized Account Insights View for MCP Agent with strictly 8 fields and zero base table exposure&#039;
+AS
+SELECT 
+    SF_ACCOUNT_ID,
+    ACCOUNT_NAME,
+    SLA_TIER,
+    HEALTH_SCORE,
+    CASE 
+        WHEN HEALTH_SCORE &gt;= 80 THEN &#039;EXCELLENT&#039;
+        WHEN HEALTH_SCORE &gt;= 60 THEN &#039;FAIR&#039;
+        ELSE &#039;AT RISK&#039;
+    END AS HEALTH_STATUS,
+    USAGE_HOURS,
+    CHURN_RISK,
+    SNOWFLAKE_LAST_UPDATED
+FROM LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS;
+
+-- 3. Create Dedicated Read-Only MCP Role
+CREATE ROLE IF NOT EXISTS MCP_AGENT_READER_ROLE COMMENT = &#039;Least-privileged read-only role for Slack Gemini MCP Agent&#039;;
+
+-- 4. Grant Least-Privilege Permissions
+GRANT USAGE ON WAREHOUSE COMPUTE_WH TO ROLE MCP_AGENT_READER_ROLE;
+GRANT USAGE ON DATABASE LEARNDC_MCP_DB TO ROLE MCP_AGENT_READER_ROLE;
+GRANT USAGE ON SCHEMA LEARNDC_MCP_DB.SECURE_ANALYTICS TO ROLE MCP_AGENT_READER_ROLE;
+GRANT SELECT ON VIEW LEARNDC_MCP_DB.SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS TO ROLE MCP_AGENT_READER_ROLE;
+
+-- 5. Assign Role to Integration User
+GRANT ROLE MCP_AGENT_READER_ROLE TO USER SUMITGUPTA05;</code></pre>
+            </div>
+          <h4 class="sub-sub-title">Security Architecture Comparison:</h4>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Dimension</th><th>Base Table (<code class="inline-code">LEARNDC_DB.ACCOUNT_ANALYTICS</code>)</th><th>Secure View (<code class="inline-code">LEARNDC_MCP_DB.V_ACCOUNT_INSIGHTS</code>)</th></tr></thead><tbody><tr><td><strong>Consumer</strong></td><td>Bi-directional Sync Daemon & Triggers</td><td>Slack Gemini AI Agent via <code class="inline-code">SnowflakeMcpClient</code></td></tr><tr><td><strong>Active Role</strong></td><td><code class="inline-code">ACCOUNTADMIN</code> / <code class="inline-code">SYSADMIN</code></td><td><code class="inline-code">MCP_AGENT_READER_ROLE</code></td></tr><tr><td><strong>Permissions</strong></td><td><code class="inline-code">SELECT</code>, <code class="inline-code">INSERT</code>, <code class="inline-code">UPDATE</code>, <code class="inline-code">DELETE</code></td><td><code class="inline-code">SELECT</code> Only</td></tr><tr><td><strong>Field Exposure</strong></td><td>All 13 fields (including <code class="inline-code">ANNUAL_REVENUE</code>, <code class="inline-code">CSM_EMAIL</code>, etc.)</td><td><strong>Strictly 8 sanitized fields</strong></td></tr><tr><td><strong>View Type</strong></td><td>Standard Table</td><td><strong>Snowflake Secure View</strong> (Definition and query plans masked)</td></tr><tr><td><strong>Direct Table Access</strong></td><td>Yes</td><td><strong>No</strong> (Direct access to <code class="inline-code">LEARNDC_DB</code> is blocked)</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+<h3 class="sub-title">E. Data Dictionary: The 8 MCP Telemetry Fields (<code class="inline-code">V_ACCOUNT_INSIGHTS</code>)</h3>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Column Name</th><th>Data Type</th><th>Origin Source</th><th>Description & Business Meaning</th><th>Sample Value</th></tr></thead><tbody><tr><td><code class="inline-code">SF_ACCOUNT_ID</code></td><td><code class="inline-code">VARCHAR(18)</code></td><td>Salesforce <code class="inline-code">Account.Id</code></td><td>18-character case-safe Salesforce ID tying CRM and DWH.</td><td><code class="inline-code">001fj00001qAtYCAA0</code></td></tr><tr><td><code class="inline-code">ACCOUNT_NAME</code></td><td><code class="inline-code">VARCHAR(255)</code></td><td>Salesforce <code class="inline-code">Account.Name</code></td><td>Official client company name for exact and fuzzy matching.</td><td><code class="inline-code">Apex Global Innovations</code></td></tr><tr><td><code class="inline-code">SLA_TIER</code></td><td><code class="inline-code">VARCHAR(50)</code></td><td>Salesforce <code class="inline-code">Account.SLA__c</code></td><td>Contracted customer support tier (<code class="inline-code">Platinum</code>, <code class="inline-code">Gold</code>, <code class="inline-code">Silver</code>).</td><td><code class="inline-code">Platinum</code></td></tr><tr><td><code class="inline-code">HEALTH_SCORE</code></td><td><code class="inline-code">NUMBER(3,0)</code></td><td>Snowflake Telemetry ML Model</td><td>Algorithmic customer stability score (1–100).</td><td><code class="inline-code">85</code></td></tr><tr><td><code class="inline-code">HEALTH_STATUS</code></td><td><code class="inline-code">VARCHAR(10)</code></td><td>Computed View Expression</td><td>Categorical status (<code class="inline-code">EXCELLENT</code> >= 80, <code class="inline-code">FAIR</code> >= 60, <code class="inline-code">AT RISK</code> < 60).</td><td><code class="inline-code">EXCELLENT</code></td></tr><tr><td><code class="inline-code">USAGE_HOURS</code></td><td><code class="inline-code">NUMBER(10,2)</code></td><td>Snowflake Platform Usage Logs</td><td>Platform compute or feature usage hours consumed this month.</td><td><code class="inline-code">142.50</code></td></tr><tr><td><code class="inline-code">CHURN_RISK</code></td><td><code class="inline-code">VARCHAR(20)</code></td><td>Snowflake Predictive Model</td><td>ML-driven churn propensity classification (<code class="inline-code">LOW</code>, <code class="inline-code">MEDIUM</code>, <code class="inline-code">HIGH</code>).</td><td><code class="inline-code">LOW</code></td></tr><tr><td><code class="inline-code">SNOWFLAKE_LAST_UPDATED</code></td><td><code class="inline-code">TIMESTAMP_NTZ</code></td><td>Snowflake System Function</td><td>Timestamp when Snowflake last refreshed the telemetry metrics.</td><td><code class="inline-code">2026-09-07 18:00:00</code></td></tr></tbody></table></div>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-4-detailed-architecture-workflows">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 4. Detailed Architecture & Workflows</h2>
+<h3 class="sub-title">System Architecture Diagram</h3>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+flowchart TD
+    subgraph Salesforce["☁️ Salesforce Org (learn_dc)"]
+        ACC[Account Created / Updated] --> TRG[AccountSnowflakeTrigger]
+        TRG --> HND[AccountSnowflakeTriggerHandler<br/><i>Field Diffing & Loop Prevention</i>]
+        HND --> QUE[SnowflakeSyncQueueable<br/><i>Async HTTP Callout</i>]
+        QUE --> SVC[SnowflakeSyncService]
+        LWC[slackBotAgent LWC<br/><i>Unified Dossier Card</i>]
+        LWC_CTRL[SlackBotAgentController.cls]
+        LWC --> LWC_CTRL
+    end
+
+    subgraph Bridge["⚡ Node.js Integration Bridge (slack-gemini-agent)"]
+        subgraph SyncLayer["Tier 1: Sync Engine"]
+            EP_OUT["POST /api/snowflake/sync-outbound"]
+            SNOW_SRV[SnowflakeService.ts<br/><i>MERGE Upsert</i>]
+            SYNC_DAEMON[syncDaemon.ts<br/><i>5-Second Poller</i>]
+        end
+
+        subgraph McpLayer["Tier 2: Dual MCP Layer"]
+            SF_MCP[salesforceMcpClient.ts<br/><i>Salesforce MCP Client</i>]
+            SNOW_MCP[snowflakeMcpClient.ts<br/><i>Snowflake MCP Client</i><br/>Role: MCP_AGENT_READER_ROLE]
+        end
+
+        GEMINI_AGENT[GeminiAgentSessionManager<br/><i>Google Gemini 3.6 Flash</i>]
+    end
+
+    subgraph Snowflake["❄️ Snowflake Cloud Data Warehouse"]
+        subgraph BaseDB["LEARNDC_DB (Base Storage)"]
+            TABLE[ANALYTICS.ACCOUNT_ANALYTICS]
+        end
+
+        subgraph McpDB["LEARNDC_MCP_DB (Secure MCP Storage)"]
+            V_INSIGHTS[SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS<br/><i>Strictly 8 Fields - Read Only</i>]
+        end
+    end
+
+    subgraph Slack["💬 Slack Platform"]
+        SLACK_USER["User in Slack"]
+        SLACK_CMD["/account-brief Command"]
+        SLACK_APP[Bolt App Router]
+        SLACK_USER --> SLACK_CMD --> SLACK_APP
+    end
+
+    %% Tier 1 Sync Connections
+    SVC -->|Real-Time HTTP POST| EP_OUT
+    EP_OUT --> SNOW_SRV
+    SNOW_SRV -->|SQL MERGE INTO| TABLE
+    SYNC_DAEMON <-->|5s Bi-Directional Polling| TABLE
+    SYNC_DAEMON <-->|SOQL & Writeback| Salesforce
+
+    %% Tier 2 MCP Connections
+    SLACK_APP --> GEMINI_AGENT
+    LWC_CTRL -->|Apex Dispatcher| GEMINI_AGENT
+    GEMINI_AGENT -->|Autonomous Tool Call| SF_MCP
+    GEMINI_AGENT -->|Autonomous Tool Call| SNOW_MCP
+    SF_MCP -->|SOQL Query| ACC
+    SNOW_MCP -->|SELECT via MCP_AGENT_READER_ROLE| V_INSIGHTS
+    V_INSIGHTS -.->|Owner Context Resolution| TABLE
+
+    %% Unified Output
+    GEMINI_AGENT -->|Single Unified Dossier (Zero Platform Branding)| SLACK_APP
+    GEMINI_AGENT -->|Single Unified Dossier (SLDS Card)| LWC
+              </div>
+            </div>
+          <hr class="section-divider"/>
+<h3 class="sub-title">Sequence Workflow 1: Real-Time Event-Driven Sync (Salesforce ➔ Snowflake Base Table)</h3>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Rep as Salesforce User / CSM
+    participant SF as Salesforce Core (Account Object)
+    participant Trg as AccountSnowflakeTrigger
+    participant Hnd as AccountSnowflakeTriggerHandler
+    participant Que as SnowflakeSyncQueueable
+    participant Gate as Node.js Bridge (/api/snowflake/sync-outbound)
+    participant Snow as Snowflake Base Table (ACCOUNT_ANALYTICS)
+
+    Rep->>SF: Creates or Updates Account (e.g. Apex Global Innovations)
+    SF->>Trg: fires after insert / after update
+    Trg->>Hnd: handleAfterInsert / handleAfterUpdate(newAccs, oldMap)
+    Note over Hnd: Diff check: Did Name, Industry, SLA, Priority, or CSM change?
+    Hnd->>Que: System.enqueueJob(new SnowflakeSyncQueueable(accountIds))
+    Que->>Gate: HTTP POST /api/snowflake/sync-outbound { sfAccountId, accountName, ... }
+    Gate->>Snow: MERGE INTO LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS USING (...)
+    Snow-->>Gate: 1 row merged successfully
+    Gate-->>Que: Returns HTTP 200 { isSuccess: true, syncedAt: "..." }
+              </div>
+            </div>
+          <h4 class="sub-sub-title">Executed SQL Upsert Pattern:</h4>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">MERGE INTO LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS target
+USING (
+    SELECT 
+        ? AS SF_ACCOUNT_ID,
+        ? AS ACCOUNT_NAME,
+        ? AS INDUSTRY,
+        ? AS ACCOUNT_TYPE,
+        ? AS ANNUAL_REVENUE,
+        ? AS SLA_TIER,
+        ? AS CUSTOMER_PRIORITY,
+        ? AS CSM_EMAIL,
+        CURRENT_TIMESTAMP() AS SF_LAST_MODIFIED
+) source
+ON target.SF_ACCOUNT_ID = source.SF_ACCOUNT_ID
+WHEN MATCHED THEN
+    UPDATE SET 
+        target.ACCOUNT_NAME = source.ACCOUNT_NAME,
+        target.INDUSTRY = source.INDUSTRY,
+        target.ACCOUNT_TYPE = source.ACCOUNT_TYPE,
+        target.ANNUAL_REVENUE = source.ANNUAL_REVENUE,
+        target.SLA_TIER = source.SLA_TIER,
+        target.CUSTOMER_PRIORITY = source.CUSTOMER_PRIORITY,
+        target.CSM_EMAIL = source.CSM_EMAIL,
+        target.SF_LAST_MODIFIED = source.SF_LAST_MODIFIED
+WHEN NOT MATCHED THEN
+    INSERT (
+        SF_ACCOUNT_ID, ACCOUNT_NAME, INDUSTRY, ACCOUNT_TYPE,
+        ANNUAL_REVENUE, SLA_TIER, CUSTOMER_PRIORITY, CSM_EMAIL, SF_LAST_MODIFIED
+    ) VALUES (
+        source.SF_ACCOUNT_ID, source.ACCOUNT_NAME, source.INDUSTRY, source.ACCOUNT_TYPE,
+        source.ANNUAL_REVENUE, source.SLA_TIER, source.CUSTOMER_PRIORITY, source.CSM_EMAIL, source.SF_LAST_MODIFIED
+    );</code></pre>
+            </div>
+          <hr class="section-divider"/>
+<h3 class="sub-title">Sequence Workflow 2: MCP-Driven AI Agent Inquiries (Slack / Gemini)</h3>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor User as User in Slack
+    participant Bot as slack-gemini-agent (Bolt)
+    participant Gemini as Google Gemini 3.6 Flash
+    participant SfMcp as salesforceMcpClient
+    participant SnowMcp as snowflakeMcpClient (Role: MCP_AGENT_READER_ROLE)
+    participant McpView as LEARNDC_MCP_DB.SECURE_ANALYTICS.V_ACCOUNT_INSIGHTS
+
+    User->>Bot: /account-brief Apex Global Innovations
+    Bot->>Gemini: User Prompt + MCP Tool Registry
+    
+    rect rgb(240, 248, 255)
+        Note over Gemini: Autonomous Multi-MCP Invocation
+        Gemini-->>Bot: functionCall: get_crm_account({ nameOrId: "Apex Global Innovations" })
+        Bot->>SfMcp: callTool("get_crm_account", ...)
+        SfMcp-->>Bot: Returns CRM Attributes & Contacts
+        Bot-->>Gemini: Tool Result (CRM Data)
+
+        Gemini-->>Bot: functionCall: snowflake_get_account_telemetry({ accountIdentifier: "Apex Global Innovations" })
+        Bot->>SnowMcp: callTool("snowflake_get_account_telemetry", ...)
+        SnowMcp->>McpView: SELECT 8 fields FROM V_ACCOUNT_INSIGHTS WHERE ...
+        McpView-->>SnowMcp: Returns 8 sanitized fields
+        SnowMcp-->>Bot: Returns Telemetry DTO
+        Bot-->>Gemini: Tool Result (Telemetry Data)
+    end
+
+    Note over Gemini: Gemini Correlates Data into a Single Platform-Agnostic Dossier
+    Gemini-->>Bot: Synthesizes Unified Dossier (Zero Platform Branding)
+    Bot-->>User: Renders Single Unified Block Kit Card
+              </div>
+            </div>
+          <hr class="section-divider"/>
+<h3 class="sub-title">Sequence Workflow 3: Salesforce LWC Chat & Slash Commands</h3>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Rep as Salesforce User / CSM
+    participant LWC as slackBotAgent LWC
+    participant Ctrl as SlackBotAgentController.cls
+    participant SF as Salesforce Account / MCP
+    participant Slack as Slack Channel (Permanent History)
+
+    Rep->>LWC: Types /account-brief or /snowflake
+    LWC->>Ctrl: sendMessage(sessionId, "/account-brief", recordId)
+    Ctrl->>Ctrl: executeSlashCommand(commandText, recordId)
+    Ctrl->>SF: Queries Account (CRM fields + synced telemetry)
+    Ctrl-->>LWC: Returns ChatResponseDTO with cardData
+    LWC->>LWC: renderMessageInDom() -> creates 2x2 Telemetry Grid
+    Note over LWC: Card renders with unified headers: "Account Overview", "Account Health & Platform Utilization"
+    Ctrl-)Slack: Asynchronously posts thread to Slack (permanent archive)
+    Ctrl-)SF: Logs completed Task on Account timeline
+              </div>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-5-ui-presentations-unified-dossier-standard">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 5. UI Presentations & Unified Dossier Standard</h2>
+<h3 class="sub-title">Design Principle: Zero Platform Brand Leakage</h3>
+<p>To avoid confusing end users and to present a professional executive-ready interface:</p>
+<ol class="styled-ordered-list">
+<li><strong>No Infrastructure or Platform Mentions</strong>: Never display labels such as <code class="inline-code">Salesforce CRM</code>, <code class="inline-code">Snowflake Data Warehouse</code>, <code class="inline-code">CRM Vitals</code>, <code class="inline-code">Snowflake Telemetry</code>, or database table names (<code class="inline-code">LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS</code>).</li>
+<li><strong>Unified Business Taxonomy</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><strong>Header</strong>: <code class="inline-code">📋 Account Dossier: [Account Name]</code></li>
+<li><strong>Account Context</strong>: <code class="inline-code">Primary Contact</code>, <code class="inline-code">Contact Email</code>, <code class="inline-code">Account Manager</code>, <code class="inline-code">Industry</code></li>
+<li><strong>Operational Performance</strong>: <code class="inline-code">📊 Account Health &amp; Platform Utilization</code></li>
+<li><strong>Communications</strong>: <code class="inline-code">📝 Recent Activity &amp; Communication</code></li>
+</ul>
+<hr class="section-divider"/>
+<h3 class="sub-title">A. Unified Slack Block Kit Card (<code class="inline-code">/account-brief</code>)</h3>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TEXT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-text">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 📋 Account Dossier: Apex Global Innovations                     ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ • Primary Contact: Alex Hales (skgsumit5@gmail.com)             ┃
+┃ • Account Manager: skgsummo5@gmail.com                          ┃
+┃ • Industry: Aerospace &amp; Defense                                 ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ 📊 Account Health &amp; Platform Utilization                        ┃
+┃ • Health Score: 85 / 100 (🟢 EXCELLENT)                         ┃
+┃ • Platform Utilization: 142.50 Active Hours                     ┃
+┃ • Churn Risk: LOW                                               ┃
+┃ • Service Tier: Platinum                                        ┃
+┃ • Telemetry Status: Up to date (Live)                           ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ 📝 Recent Activity &amp; Communication                              ┃
+┃ • Summary: Architecture validation confirmed with stakeholder.  ┃
+┃ • Action Items: Finalize production deployment timeline.        ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛</code></pre>
+            </div>
+          <hr class="section-divider"/>
+<h3 class="sub-title">B. Unified Salesforce LWC Card (<code class="inline-code">slackBotAgent</code>)</h3>
+<p>In Salesforce, typing <code class="inline-code">/account-brief</code> or <code class="inline-code">/snowflake</code> renders an SLDS card with consistent business labels:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TEXT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-text">┌─────────────────────────────────────────────────────────────────┐
+│ 🏢 Account Overview                                             │
+│ Account: Apex Global Innovations                                │
+│ Account Manager: skgsummo5@gmail.com                            │
+│ Primary Contact: Alex Hales (skgsumit5@gmail.com)               │
+│ Industry: Aerospace &amp; Defense                                   │
+├─────────────────────────────────────────────────────────────────┤
+│ 📊 Account Health &amp; Platform Utilization                        │
+│ ┌─────────────────────────────┬───────────────────────────────┐ │
+│ │ HEALTH SCORE                │ PLATFORM UTILIZATION          │ │
+│ │ 🟢 85/100 (EXCELLENT)       │ ⏱️ 142.50 hrs                 │ │
+│ ├─────────────────────────────┼───────────────────────────────┤ │
+│ │ CHURN RISK                  │ SERVICE LEVEL                 │ │
+│ │ 🛡️ LOW                      │ ⭐ Platinum                   │ │
+│ └─────────────────────────────┴───────────────────────────────┘ │
+│ Status: Active • Last Updated: Live Synchronized                │
+├─────────────────────────────────────────────────────────────────┤
+│ 📝 Recent Activity &amp; Communication                              │
+│ Summary: Architecture validation confirmed with stakeholder.    │
+│ Action Items: Finalize production deployment timeline.          │
+└─────────────────────────────────────────────────────────────────┘</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-6-directory-codebase-layout">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 6. Directory & Codebase Layout</h2>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">CODE</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-">Learn DC/
+├── docs/
+│   └── SALESFORCE_SNOWFLAKE_INTEGRATION.md      # This comprehensive technical guide
+│
+├── slack-gemini-agent/
+│   ├── .env                                     # Credentials &amp; configuration
+│   ├── package.json                             # snowflake-sdk, @google/genai, @slack/bolt
+│   └── src/
+│       ├── config.ts                            # Snowflake &amp; Gemini environment validation
+│       ├── mcp/
+│       │   ├── snowflakeMcpClient.ts            # Native TypeScript Snowflake MCP Client (Role: MCP_AGENT_READER_ROLE)
+│       │   └── salesforceMcpClient.ts           # Salesforce SOQL &amp; Record MCP Client
+│       ├── snowflake/
+│       │   ├── client.ts                        # Base connection pooling &amp; query runner (LEARNDC_DB)
+│       │   ├── service.ts                       # MERGE upsert &amp; telemetry auto-sync
+│       │   └── syncDaemon.ts                    # 5-second background poller (Tier 1 Sync)
+│       ├── api/
+│       │   └── gateway.ts                       # REST routes (/api/snowflake/sync-outbound, etc.)
+│       ├── gemini/
+│       │   ├── agent.ts                         # Session manager &amp; multi-MCP orchestration loop
+│       │   ├── prompt.ts                        # Zero-branding unified dossier system instructions
+│       │   └── tools.ts                         # Gemini function declarations routed to MCP
+│       ├── slack/
+│       │   └── commands.ts                      # /account-brief unified Block Kit card renderer
+│       ├── index.ts                             # Main service startup &amp; MCP client initialization
+│       └── test-live-e2e.ts                     # End-to-end verification script
+│
+└── force-app/main/default/
+    ├── layouts/
+    │   ├── Account-Account Layout.layout-meta.xml            # Page layout with telemetry fields
+    │   ├── Account-Account (Sales) Layout.layout-meta.xml    # Page layout with telemetry fields
+    │   ├── Account-Account (Support) Layout.layout-meta.xml  # Page layout with telemetry fields
+    │   └── Account-Account (Marketing) Layout.layout-meta.xml# Page layout with telemetry fields
+    │
+    ├── objects/Account/fields/
+    │   ├── Health_Score__c.field-meta.xml       # Number(3,0)
+    │   ├── Usage_Hours__c.field-meta.xml        # Number(10,2)
+    │   ├── Churn_Risk__c.field-meta.xml         # Text(20)
+    │   └── Last_Snowflake_Sync__c.field-meta.xml# DateTime
+    │
+    ├── triggers/
+    │   └── AccountSnowflakeTrigger.trigger      # Real-time after insert / after update listener
+    │
+    ├── classes/
+    │   ├── AccountSnowflakeTriggerHandler.cls   # Loop prevention &amp; diff checks
+    │   ├── SnowflakeSyncQueueable.cls           # Non-blocking async queueable job
+    │   ├── SnowflakeSyncService.cls             # HTTP callout dispatcher
+    │   ├── AccountSnowflakeTriggerTest.cls      # 100% test coverage for trigger logic
+    │   ├── SlackBotAgentController.cls          # Unified card builder &amp; slash command dispatcher
+    │   └── SlackBotAgentControllerTest.cls      # 100% test coverage for LWC controller
+    │
+    └── lwc/
+        └── slackBotAgent/
+            ├── slackBotAgent.html               # Chat interface &amp; autocomplete popup
+            ├── slackBotAgent.js                 # Unified 2x2 telemetry grid &amp; dossier renderer
+            └── slackBotAgent.css                # Clean SLDS styling &amp; badges</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-7-live-verification-test-matrix">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 7. Live Verification & Test Matrix</h2>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Test Suite / Area</th><th>Tested Target</th><th>Result</th><th>Status</th></tr></thead><tbody><tr><td><strong>Salesforce Schema</strong></td><td><code class="inline-code">Account</code> Custom Fields + Permissions</td><td>Deployed & Assigned to <code class="inline-code">sumit.gupta@datacloud.com</code></td><td>✅ Verified</td></tr><tr><td><strong>Page Layouts</strong></td><td>4 Account Page Layouts with Telemetry Section</td><td>Deployed via <code class="inline-code">sf project deploy start</code> to <code class="inline-code">learn_dc</code></td><td>✅ Verified</td></tr><tr><td><strong>Snowflake Base DB</strong></td><td><code class="inline-code">LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS</code></td><td>Created & Owned by <code class="inline-code">ACCOUNTADMIN</code>, grants to <code class="inline-code">SYSADMIN</code> & <code class="inline-code">PUBLIC</code></td><td>✅ Verified</td></tr><tr><td><strong>Snowflake MCP DB</strong></td><td><code class="inline-code">LEARNDC_MCP_DB.SECURE_ANALYTICS</code></td><td>Created & Owned by <code class="inline-code">ACCOUNTADMIN</code></td><td>✅ Verified</td></tr><tr><td><strong>Snowflake Secure View</strong></td><td><code class="inline-code">V_ACCOUNT_INSIGHTS</code> (8 Fields)</td><td>Created with computed <code class="inline-code">HEALTH_STATUS</code>; Verified against live accounts</td><td>✅ Verified</td></tr><tr><td><strong>Snowflake MCP Role</strong></td><td><code class="inline-code">MCP_AGENT_READER_ROLE</code></td><td>USAGE on <code class="inline-code">LEARNDC_MCP_DB</code>, SELECT on <code class="inline-code">V_ACCOUNT_INSIGHTS</code>; Assigned to <code class="inline-code">SUMITGUPTA05</code></td><td>✅ Verified</td></tr><tr><td><strong>Read-Only Enforcement</strong></td><td>SQL <code class="inline-code">INSERT</code> into <code class="inline-code">V_ACCOUNT_INSIGHTS</code></td><td>Rejected with <code class="inline-code">SQL compilation error: Object does not exist or not authorized</code></td><td>✅ Verified</td></tr><tr><td><strong>Native MCP Client</strong></td><td><code class="inline-code">SnowflakeMcpClient</code> (<code class="inline-code">snowflake_get_account_telemetry</code>)</td><td>Queried <code class="inline-code">Apex Global Innovations</code> via MCP role; Returned exact 8 fields</td><td>✅ Verified</td></tr><tr><td><strong>Background Sync Daemon</strong></td><td>5s Poller (<code class="inline-code">syncDaemon.ts</code>)</td><td>Auto-detects SF edits, updates Snowflake, writes back sync timestamp</td><td>✅ Verified</td></tr><tr><td><strong>Apex Trigger Tests</strong></td><td><code class="inline-code">AccountSnowflakeTriggerTest.cls</code></td><td>4 / 4 Tests Passed (100% Pass Rate)</td><td>✅ Verified</td></tr><tr><td><strong>LWC Controller Tests</strong></td><td><code class="inline-code">SlackBotAgentControllerTest.cls</code></td><td>14 / 14 Tests Passed (100% Pass Rate)</td><td>✅ Verified</td></tr><tr><td><strong>Zero Brand Leakage</strong></td><td>Slack Block Kit & LWC Card Outputs</td><td>Clean business headers; Zero mentions of Snowflake/Salesforce/DB names</td><td>✅ Verified</td></tr><tr><td><strong>Node.js TS Build</strong></td><td><code class="inline-code">npm run build</code></td><td>0 Compilation Errors (Clean exit code 0)</td><td>✅ Verified</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-8-operations-troubleshooting-guide">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 8. Operations & Troubleshooting Guide</h2>
+<h3 class="sub-title">Running Queries as <code class="inline-code">MCP_AGENT_READER_ROLE</code> in Snowflake</h3>
+<p>To simulate what the AI Agent sees via MCP:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">USE ROLE MCP_AGENT_READER_ROLE;
+USE WAREHOUSE COMPUTE_WH;
+USE DATABASE LEARNDC_MCP_DB;
+USE SCHEMA SECURE_ANALYTICS;
+
+-- Query the 8-field secure view:
+SELECT * FROM V_ACCOUNT_INSIGHTS WHERE ACCOUNT_NAME ILIKE &#039;%Apex Global%&#039;;
+
+-- Verify write-protection (This will and MUST fail):
+INSERT INTO V_ACCOUNT_INSIGHTS (SF_ACCOUNT_ID, ACCOUNT_NAME) VALUES (&#039;001test&#039;, &#039;Test Account&#039;);
+-- Output: SQL compilation error: Operation not permitted or not authorized.</code></pre>
+            </div>
+          <h3 class="sub-title">Querying the Underlying Integration Table</h3>
+<p>To verify bi-directional sync data directly as an administrator:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">USE ROLE ACCOUNTADMIN;
+SELECT 
+    SF_ACCOUNT_ID, ACCOUNT_NAME, INDUSTRY, ANNUAL_REVENUE, 
+    HEALTH_SCORE, USAGE_HOURS, CHURN_RISK, SF_LAST_MODIFIED, SNOWFLAKE_LAST_UPDATED
+FROM LEARNDC_DB.ANALYTICS.ACCOUNT_ANALYTICS
+ORDER BY SNOWFLAKE_LAST_UPDATED DESC;</code></pre>
+            </div>
+          <h3 class="sub-title">Starting the Local Slack Bot & MCP Agent Bridge</h3>
+<p>To start the multi-MCP Slack agent and background sync daemon:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">POWERSHELL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-powershell">cd &quot;slack-gemini-agent&quot;
+npm run dev</code></pre>
+            </div>
+          <h3 class="sub-title">Running Apex Unit Tests</h3>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">POWERSHELL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-powershell">sf apex run test -n AccountSnowflakeTriggerTest -n SlackBotAgentControllerTest -o learn_dc -r human</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-9-future-reference-architectural-enhancement-roadmap">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 9. Future Reference & Architectural Enhancement Roadmap</h2>
+<p>For production expansion and ongoing governance, the following architectural enhancements are documented for future implementation:</p>
+<h3 class="sub-title">1. Key-Pair (RSA) Authentication</h3>
+<ul class="styled-list">
+<li><strong>Objective</strong>: Eliminate static password storage in <code class="inline-code">.env</code>.</li>
+<li><strong>Implementation</strong>:</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">POWERSHELL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-powershell">  # Generate private and public RSA keys
+  openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out rsa_key.p8 -nocrypt
+  openssl rsa -in rsa_key.p8 -pubout -out rsa_key.pub</code></pre>
+            </div>
+          
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">  -- Set public key on the Snowflake service user
+  ALTER USER SUMITGUPTA05 SET RSA_PUBLIC_KEY=&#039;MIIBIjANBgkqhkiG9w0BA...&#039;;</code></pre>
+            </div>
+          <ul class="styled-list">
+<li><strong>Client Configuration</strong>: Configure <code class="inline-code">privateKeyPath</code> or <code class="inline-code">privateKey</code> in <code class="inline-code">snowflake.createConnection()</code>.</li>
+</ul>
+<h3 class="sub-title">2. Dedicated Headless Service Account (<code class="inline-code">SVC_MCP_AGENT</code>)</h3>
+<ul class="styled-list">
+<li><strong>Objective</strong>: Decouple the automated Slack agent from personal employee user accounts (<code class="inline-code">SUMITGUPTA05</code>).</li>
+<li><strong>Implementation</strong>:</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">  CREATE USER SVC_MCP_AGENT 
+      PASSWORD = &#039;...&#039; 
+      DEFAULT_ROLE = MCP_AGENT_READER_ROLE 
+      DEFAULT_WAREHOUSE = COMPUTE_WH
+      COMMENT = &#039;Headless automated service user for Slack Gemini MCP integration&#039;;
+
+  GRANT ROLE MCP_AGENT_READER_ROLE TO USER SVC_MCP_AGENT;</code></pre>
+            </div>
+          <h3 class="sub-title">3. Snowflake Network Policies</h3>
+<ul class="styled-list">
+<li><strong>Objective</strong>: Restrict inbound Snowflake traffic for the MCP role exclusively to the static IP address of the hosting Node.js server.</li>
+<li><strong>Implementation</strong>:</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">  CREATE NETWORK POLICY MCP_SERVER_WHITELIST ALLOWED_IP_LIST = (&#039;YOUR_SERVER_STATIC_IP&#039;);
+  ALTER USER SVC_MCP_AGENT SET NETWORK_POLICY = MCP_SERVER_WHITELIST;</code></pre>
+            </div>
+          <h3 class="sub-title">4. Advanced Analytical MCP Tools</h3>
+<ul class="styled-list">
+<li><strong><code class="inline-code">snowflake_get_usage_trend</code></strong>: Queries historical compute consumption across the last 30 vs. 60 days, giving Gemini the ability to detect declining usage patterns.</li>
+<li><strong><code class="inline-code">snowflake_get_cohort_benchmarks</code></strong>: Compares an account's metrics against averages within its <code class="inline-code">SLA_TIER</code> or <code class="inline-code">INDUSTRY</code>.</li>
+<li><strong>Snowflake Cortex AI</strong>: Calls native LLM functions (e.g. <code class="inline-code">SNOWFLAKE.CORTEX.SUMMARIZE</code>) directly inside Snowflake for high-performance in-database feature analysis.</li>
+</ul>
+<h3 class="sub-title">5. Warehouse Optimization & Short-TTL In-Memory Caching</h3>
+<ul class="styled-list">
+<li><strong>Warehouse Auto-Suspend Setting</strong>:</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">  ALTER WAREHOUSE COMPUTE_WH SET AUTO_SUSPEND = 60 AUTO_RESUME = TRUE STATEMENT_TIMEOUT_IN_SECONDS = 15;</code></pre>
+            </div>
+          <ul class="styled-list">
+<li><strong>In-Memory Cache in Node.js</strong>: Add a 60-second in-memory LRU cache in <code class="inline-code">snowflakeMcpClient.ts</code> to instantly return data for rapid sequential queries without waking up the warehouse.</li>
+</ul>
+<h3 class="sub-title">6. Proactive Churn Alerts & Slack Notifications</h3>
+<ul class="styled-list">
+<li>Implement a cron daemon or Snowflake Stream that triggers an automated high-priority Block Kit notification in a Slack CSM channel (e.g., <code class="inline-code">#csm-risk-alerts</code>) whenever an account's <code class="inline-code">CHURN_RISK</code> shifts to <code class="inline-code">HIGH</code>.</li>
+</ul>
+<h3 class="sub-title">7. Snowflake Observability with Session <code class="inline-code">QUERY_TAG</code></h3>
+<ul class="styled-list">
+<li>In <code class="inline-code">snowflakeMcpClient.ts</code>, execute <code class="inline-code">ALTER SESSION SET QUERY_TAG = &#039;SLACK_MCP_AGENT&#039;;</code> prior to queries. Administrators can then filter, audit, and analyze exact credit consumption in <code class="inline-code">SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY</code>.</li>
+</ul>
+</section>
+
+  </div>
+
+  <a href="#" class="back-to-top">↑ Top</a>
+
+  <footer>
+    <strong>Salesforce Lightning Platform • Enterprise AI Integration Guide</strong><br/>
+    Internal Engineering Reference & Operational Playbook • Org: <code>learn_dc</code>
+  </footer>
+
+  <script>
+    function copyCode(btn) {
+      const container = btn.closest('.code-container');
+      const code = container.querySelector('code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const origText = btn.innerText;
+        btn.innerText = '✓ Copied!';
+        btn.style.background = '#2EB67D';
+        btn.style.borderColor = '#2EB67D';
+        btn.style.color = '#ffffff';
+        setTimeout(() => {
+          btn.innerText = origText;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 2000);
+      });
+    }
+
+    // Scroll Progress & Active Tab Highlighting
+    window.addEventListener('scroll', () => {
+      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / height) * 100;
+      document.getElementById('progress-bar').style.width = scrolled + '%';
+
+      const sections = document.querySelectorAll('.section-card');
+      const navTabs = document.querySelectorAll('.nav-tab');
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        if (winScroll >= sectionTop - 140) {
+          current = section.getAttribute('id');
+        }
+      });
+      navTabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.getAttribute('href') === '#' + current) {
+          tab.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+  

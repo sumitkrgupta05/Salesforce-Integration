@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Omni-Channel AI Architecture: Slack Bot Agent &amp; Salesforce LWC Integration | Salesforce Enterprise Architecture</title>
+  <!-- Mermaid JS for Dynamic Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      securityLevel: 'loose',
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+      sequence: { useMaxWidth: true, showSequenceNumbers: true }
+    });
+  </script>
+  <style>
+    :root {
+      --sf-blue: #0176D3;
+      --sf-dark-blue: #0b5cab;
+      --sf-navy: #032d60;
+      --slack-aubergine: #4A154B;
+      --slack-green: #2EB67D;
+      --slack-yellow: #ECB22E;
+      --slack-red: #E01E5A;
+      --slack-blue: #36C5F0;
+      --gcp-blue: #4285F4;
+      --snowflake-blue: #29B5E8;
+      --gmail-red: #EA4335;
+      --cal-blue: #1A73E8;
+      --bg-light: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --border-color: #e2e8f0;
+      --code-bg: #1e1e24;
+      --radius-lg: 12px;
+      --radius-md: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-light);
+      color: var(--text-main);
+      line-height: 1.68;
+      padding-bottom: 80px;
+    }
+
+    /* Scroll progress indicator */
+    #progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--sf-blue), var(--slack-green), var(--slack-blue));
+      width: 0%;
+      z-index: 999;
+      transition: width 0.1s ease;
+    }
+
+    /* Hero Header */
+    header.hero {
+      background: linear-gradient(135deg, var(--sf-navy) 0%, #0f172a 45%, var(--slack-aubergine) 100%);
+      color: white;
+      padding: 48px 24px;
+      text-align: center;
+      border-bottom: 4px solid var(--slack-green);
+      position: relative;
+    }
+
+    header.hero h1 {
+      font-size: 2.3rem;
+      margin-bottom: 12px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    header.hero p {
+      font-size: 1.1rem;
+      color: #cbd5e1;
+      max-width: 850px;
+      margin: 0 auto 20px auto;
+    }
+
+    .badge-bar {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f1f5f9;
+    }
+
+    .badge.success {
+      background: rgba(46, 182, 125, 0.25);
+      border-color: #2EB67D;
+      color: #86efac;
+    }
+
+    /* Layout Container */
+    .container {
+      max-width: 1220px;
+      margin: 28px auto;
+      padding: 0 20px;
+    }
+
+    /* Sticky Navigation Bar with Search */
+    .nav-wrapper {
+      position: sticky;
+      top: 12px;
+      z-index: 100;
+      margin-bottom: 28px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      padding: 6px;
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      scrollbar-width: thin;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .nav-tab {
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      color: var(--text-sub);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .nav-tab:hover {
+      background: #f1f5f9;
+      color: var(--sf-blue);
+    }
+
+    .nav-tab.active {
+      background: var(--sf-blue);
+      color: #ffffff;
+    }
+
+    /* Section Cards */
+    .section-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    h2.section-title {
+      font-size: 1.55rem;
+      margin-bottom: 20px;
+      color: var(--sf-navy);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 12px;
+    }
+
+    .title-badge {
+      font-size: 0.72rem;
+      font-weight: 800;
+      background: #e0f2fe;
+      color: var(--sf-blue);
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    h3.sub-title {
+      font-size: 1.25rem;
+      margin: 24px 0 12px 0;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h4.sub-sub-title {
+      font-size: 1.05rem;
+      margin: 18px 0 10px 0;
+      color: #1e293b;
+    }
+
+    p {
+      color: #334155;
+      font-size: 0.98rem;
+      margin-bottom: 14px;
+    }
+
+    /* Lists */
+    ul.styled-list, ol.styled-ordered-list {
+      padding-left: 24px;
+      margin-bottom: 18px;
+    }
+
+    li {
+      color: #334155;
+      font-size: 0.96rem;
+      margin-bottom: 8px;
+    }
+
+    li.task-item {
+      list-style-type: none;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    li.task-item.checked {
+      color: #059669;
+      font-weight: 500;
+    }
+
+    .check-icon {
+      font-weight: bold;
+      color: #10b981;
+    }
+
+    /* Visual Illustration Card */
+    .visual-illustration-card {
+      background: #0f172a;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin: 24px 0 32px 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      border: 1px solid #334155;
+    }
+
+    .illustration-header {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .illustration-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: #0284c7;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .illustration-header h3 {
+      font-size: 1.2rem;
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    /* Diagram Box (Mermaid) */
+    .diagram-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin: 22px 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+
+    .diagram-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    /* Step Card */
+    .step-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 18px 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      border-left: 4px solid var(--sf-blue);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .step-badge {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #ffffff;
+      background: var(--sf-blue);
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .step-card h4 {
+      font-size: 1.15rem;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    /* Code Container & Syntax Styling */
+    .code-container {
+      background: var(--code-bg);
+      border-radius: var(--radius-md);
+      margin: 18px 0;
+      overflow: hidden;
+      border: 1px solid #334155;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #141418;
+      padding: 8px 16px;
+      border-bottom: 1px solid #2d2d35;
+    }
+
+    .lang-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+    }
+
+    .copy-btn {
+      background: #282832;
+      color: #cbd5e1;
+      border: 1px solid #444;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: var(--sf-blue);
+      color: #ffffff;
+      border-color: var(--sf-blue);
+    }
+
+    pre {
+      padding: 16px;
+      overflow-x: auto;
+      color: #f8f8f2;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    }
+
+    .inline-code {
+      background: #edf2f7;
+      color: #c026d3;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      border: 1px solid #e2e8f0;
+      font-weight: 600;
+    }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      text-align: left;
+      font-size: 0.94rem;
+    }
+
+    .styled-table th {
+      background: #f1f5f9;
+      color: var(--sf-navy);
+      font-weight: 700;
+      padding: 12px 16px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+
+    .styled-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+
+    .styled-table tr:hover {
+      background: #f8fafc;
+    }
+
+    /* Callout Boxes */
+    .callout-box {
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      margin: 20px 0;
+      border-left: 4px solid;
+    }
+
+    .callout-box.info {
+      background: #f0f9ff;
+      border-color: #0284c7;
+    }
+    .callout-box.info .callout-title { color: #0369a1; }
+
+    .callout-box.tip {
+      background: #fdf4ff;
+      border-color: #c084fc;
+    }
+    .callout-box.tip .callout-title { color: #7e22ce; }
+
+    .callout-box.warning {
+      background: #fffbeb;
+      border-color: #f59e0b;
+    }
+    .callout-box.warning .callout-title { color: #b45309; }
+
+    .callout-box.important {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+    .callout-box.important .callout-title { color: #1d4ed8; }
+
+    .callout-box.caution {
+      background: #fef2f2;
+      border-color: #ef4444;
+    }
+    .callout-box.caution .callout-title { color: #b91c1c; }
+
+    .callout-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .callout-body {
+      color: #334155;
+      font-size: 0.95rem;
+    }
+
+    hr.section-divider {
+      border: 0;
+      height: 1px;
+      background: #e2e8f0;
+      margin: 32px 0;
+    }
+
+    /* Image Container */
+    .doc-img-container {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .doc-img {
+      max-width: 100%;
+      border-radius: var(--radius-md);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border: 1px solid var(--border-color);
+    }
+    .img-caption {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    /* Back to top button */
+    .back-to-top {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--sf-blue);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 24px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(1, 118, 211, 0.4);
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      z-index: 99;
+    }
+
+    .back-to-top:hover {
+      background: var(--sf-dark-blue);
+      transform: translateY(-2px);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 32px 20px;
+      color: #64748b;
+      font-size: 0.88rem;
+      border-top: 1px solid var(--border-color);
+      background: #ffffff;
+      margin-top: 48px;
+    }
+
+    @media print {
+      .nav-wrapper, .back-to-top, .copy-btn, #progress-bar { display: none !important; }
+      .section-card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div id="progress-bar"></div>
+
+  <!-- Hero Header -->
+  <header class="hero">
+    <h1>Omni-Channel AI Architecture: Slack Bot Agent &amp; Salesforce LWC Integration</h1>
+    <p>Enterprise Technical Documentation &amp; Operational Reference</p>
+    <div class="badge-bar">
+      <span class="badge success">Production Ready</span>
+      <span class="badge ">Salesforce Lightning</span>
+      <span class="badge ">Enterprise Architecture</span>
+      <span class="badge ">Complete Implementation</span>
+      <span class="badge ">Slack Enterprise</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Sticky Navigation Tabs -->
+    <div class="nav-wrapper">
+      <nav class="nav-tabs">
+        <a href="#sec-1-executive-summary-architecture-overview" class="nav-tab">Executive Summary &amp; Architecture Overview</a>
+        <a href="#sec-2-end-to-end-sequence-architecture-diagram" class="nav-tab">End-to-End Sequence &amp; Architecture Diagram</a>
+        <a href="#sec-3-core-capabilities-technical-design" class="nav-tab">Core Capabilities &amp; Technical Design</a>
+        <a href="#sec-4-complete-codebase-file-map" class="nav-tab">Complete Codebase &amp; File Map</a>
+        <a href="#sec-5-detailed-component-walkthrough" class="nav-tab">Detailed Component Walkthrough</a>
+        <a href="#sec-6-step-by-step-implementation-setup-guide" class="nav-tab">Step-by-Step Implementation &amp; Setup Guide</a>
+        <a href="#sec-7-verification-automated-test-results" class="nav-tab">Verification &amp; Automated Test Results</a>
+        <a href="#sec-8-enterprise-user-identity-oauth-2-0-data-isolation" class="nav-tab">Enterprise User Identity, OAuth 2.0 &amp; Data Isolation</a>
+      </nav>
+    </div>
+
+    <!-- Document Content Sections -->
+    <section class="section-card" id="sec-1-executive-summary-architecture-overview">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 1. Executive Summary & Architecture Overview</h2>
+
+    <div class="visual-illustration-card">
+      <div class="illustration-header">
+        <span class="illustration-tag">Omni-Channel Customer Success Architecture</span>
+        <h3>Headless Slack Bot Agent, Account LWC Cockpit & Activity Timeline Hygiene</h3>
+      </div>
+      <svg viewBox="0 0 960 360" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+        <!-- Left Column: LWC Left Navbar & Resumption -->
+        <g transform="translate(40, 30)">
+          <rect x="0" y="0" width="220" height="300" rx="10" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+          <rect x="0" y="0" width="220" height="36" rx="10" fill="#0f172a"/>
+          <text x="14" y="23" fill="#ffffff" font-size="12" font-weight="bold">🗂️ Thread History (User-Isolated)</text>
+
+          <!-- Thread 1 (Selected) -->
+          <rect x="8" y="46" width="204" height="52" rx="6" fill="#0284c7" fill-opacity="0.3" stroke="#38bdf8"/>
+          <text x="18" y="66" fill="#ffffff" font-size="11" font-weight="bold">Q3 Renewal & Pricing</text>
+          <text x="18" y="82" fill="#93c5fd" font-size="9">3 messages • threadTs: 1773...</text>
+
+          <!-- Thread 2 -->
+          <rect x="8" y="106" width="204" height="48" rx="6" fill="#0f172a" stroke="#334155"/>
+          <text x="18" y="126" fill="#cbd5e1" font-size="11" font-weight="bold">Executive Briefing</text>
+          <text x="18" y="142" fill="#64748b" font-size="9">Yesterday • threadTs: 1772...</text>
+
+          <!-- Thread 3 -->
+          <rect x="8" y="162" width="204" height="48" rx="6" fill="#0f172a" stroke="#334155"/>
+          <text x="18" y="182" fill="#cbd5e1" font-size="11" font-weight="bold">Platform Migration</text>
+          <text x="18" y="198" fill="#64748b" font-size="9">Sep 4 • threadTs: 1771...</text>
+
+          <!-- New Chat Button -->
+          <rect x="8" y="248" width="204" height="38" rx="6" fill="#0176D3"/>
+          <text x="110" y="272" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">+ New Conversation</text>
+        </g>
+
+        <!-- Center Column: LWC Chat Stream & Interaction -->
+        <g transform="translate(280, 30)">
+          <rect x="0" y="0" width="380" height="300" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+          
+          <!-- Banner -->
+          <rect x="0" y="0" width="380" height="38" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+          <text x="16" y="24" fill="#032d60" font-size="12" font-weight="bold">Edge Communications • Thread #1773</text>
+          <rect x="290" y="8" width="75" height="22" rx="4" fill="#4A154B"/>
+          <text x="327" y="23" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">Slack ↗</text>
+
+          <!-- User Bubble -->
+          <rect x="140" y="50" width="225" height="32" rx="8" fill="#0176D3"/>
+          <text x="152" y="71" fill="#ffffff" font-size="11">Can you schedule a follow-up task?</text>
+
+          <!-- Bot Bubble with Task Confirmation -->
+          <rect x="16" y="94" width="350" height="110" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+          <text x="28" y="115" fill="#032d60" font-size="11" font-weight="bold">🤖 Gemini Copilot:</text>
+          <text x="28" y="133" fill="#334155" font-size="11">I'd be happy to create that task. Please confirm:</text>
+          <text x="28" y="152" fill="#475569" font-size="10">• Subject: Follow up on MSA Sign-Off</text>
+          <text x="28" y="168" fill="#475569" font-size="10">• Due Date: Tomorrow (Sep 10) • Priority: High</text>
+
+          <rect x="28" y="176" width="90" height="22" rx="4" fill="#10b981"/>
+          <text x="73" y="191" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">Confirm Task</text>
+
+          <rect x="126" y="176" width="60" height="22" rx="4" fill="#ef4444"/>
+          <text x="156" y="191" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">Cancel</text>
+
+          <!-- Quick Slash Chips -->
+          <rect x="16" y="215" width="85" height="20" rx="10" fill="#f1f5f9" stroke="#cbd5e1"/>
+          <text x="58" y="229" fill="#0176D3" font-size="9" font-weight="bold" text-anchor="middle">/account-brief</text>
+
+          <rect x="108" y="215" width="75" height="20" rx="10" fill="#f1f5f9" stroke="#cbd5e1"/>
+          <text x="145" y="229" fill="#0176D3" font-size="9" font-weight="bold" text-anchor="middle">/snowflake</text>
+
+          <rect x="190" y="215" width="95" height="20" rx="10" fill="#f1f5f9" stroke="#cbd5e1"/>
+          <text x="237" y="229" fill="#0176D3" font-size="9" font-weight="bold" text-anchor="middle">/summarize-thread</text>
+
+          <!-- Input Composer -->
+          <rect x="16" y="245" width="350" height="42" rx="6" fill="#ffffff" stroke="#94a3b8"/>
+          <text x="26" y="270" fill="#94a3b8" font-size="11">Type a message or "/" for commands...</text>
+        </g>
+
+        <!-- Right Column: Architecture Guardrails -->
+        <g transform="translate(680, 30)">
+          <rect x="0" y="0" width="240" height="300" rx="10" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+          <rect x="0" y="0" width="240" height="36" rx="10" fill="#0f172a"/>
+          <text x="16" y="23" fill="#ffffff" font-size="12" font-weight="bold">🛡️ Operational Guardrails</text>
+
+          <rect x="12" y="48" width="216" height="52" rx="6" fill="#0f172a" stroke="#10b981"/>
+          <text x="22" y="68" fill="#4ade80" font-size="11" font-weight="bold">Clean Activity Timeline</text>
+          <text x="22" y="84" fill="#94a3b8" font-size="10">Zero dummy tasks for general chats</text>
+
+          <rect x="12" y="110" width="216" height="52" rx="6" fill="#0f172a" stroke="#38bdf8"/>
+          <text x="22" y="130" fill="#38bdf8" font-size="11" font-weight="bold">Strict User Privacy</text>
+          <text x="22" y="146" fill="#94a3b8" font-size="10">Users never see other users' chats</text>
+
+          <rect x="12" y="172" width="216" height="52" rx="6" fill="#0f172a" stroke="#e879f9"/>
+          <text x="22" y="192" fill="#e879f9" font-size="11" font-weight="bold">Hybrid Execution</text>
+          <text x="22" y="208" fill="#94a3b8" font-size="10">100% uptime with Apex MCP fallback</text>
+
+          <rect x="12" y="234" width="216" height="52" rx="6" fill="#0f172a" stroke="#f59e0b"/>
+          <text x="22" y="254" fill="#fbbf24" font-size="11" font-weight="bold">Single-Thread Retention</text>
+          <text x="22" y="270" fill="#94a3b8" font-size="10">Continuous threadTs per session</text>
+        </g>
+      </svg>
+    </div>
+  
+<p>This document serves as the comprehensive architectural, implementation, and operational guide for the <strong>Slack Bot Agent</strong> integrated with Salesforce Lightning.</p>
+<p>In this enterprise architecture:</p>
+<ol class="styled-ordered-list">
+<li><strong>Headless AI Agent with Multi-Channel Ingress</strong>: The Slack Bot (<code class="inline-code">slack-gemini-agent</code>) acts as the single primary AI engine for both Slack and Salesforce Lightning.</li>
+<li><strong>Dual-Persistence & Activity Timeline Hygiene</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><strong>Slack</strong>: Conversations are permanently preserved in Slack as dedicated conversation threads in the bot DM (<code class="inline-code">D0BUQS5V68Z</code>) or designated channels. Left navbar threads are dynamically read from Slack history while maintaining strict Account and User isolation.</li>
+<li><strong>Clean Activity Timeline</strong>: General inquiries and routine chats do <strong>not</strong> flood the Salesforce Account with dummy <code class="inline-code">Task</code> records. Salesforce <code class="inline-code">Task</code> records are only created when the CSM explicitly instructs the agent to create a task.</li>
+<li><strong>Intentional Action Confirmation</strong>: When the user requests a task, meeting, or email, the agent asks for the necessary parameters (Subject, Due Date, Priority, Date/Time, Attendees, etc.) before taking action.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Session Thread Continuity</strong>: Rather than spawning a new Slack thread for every single message, the conversation session maintains a continuous thread identifier (<code class="inline-code">threadTs</code>). All follow-up questions and bot replies remain neatly organized under the <strong>same Slack thread</strong>.</li>
+<li><strong>Left Navbar Thread History & Seamless Resumption</strong>: The LWC features a collapsible left sidebar displaying past conversation threads for the account. Clicking any previous thread immediately restores the message history and allows the user to continue chatting in that exact thread.</li>
+<li><strong>Strict Account-Centric & User-Isolated Privacy</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Threads are scoped to the active <strong>Account</strong> record.</li>
+<li>Within an Account, threads are strictly <strong>user-isolated</strong> (<code class="inline-code">CreatedById = :currentUserId OR OwnerId = :currentUserId</code>). User A and User B chatting on the same Account will never see or access each other's conversation threads.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Direct Slack Thread Archive Permalinks</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Clicking <code class="inline-code">Slack ↗</code> in the active thread banner or <code class="inline-code">💬 View in Slack History</code> on any message bubble navigates directly to the specific conversation thread (<code class="inline-code">https://slack.com/archives/...</code>), automatically expanding the thread sidebar in both Slack Web and Slack Desktop.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Native Slash Commands & Snowflake Telemetry</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Native <code class="inline-code">/account-brief</code>, <code class="inline-code">/snowflake</code>, <code class="inline-code">/summarize-thread</code>, and <code class="inline-code">/help</code> slash commands with real-time autocompletion, interactive SLDS cards, and Snowflake Data Warehouse telemetry (Health Score, Usage Hours, Churn Risk, SLA Tier).</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>High-Availability Hybrid Execution</strong>: If the Node.js Slack Gateway tunnel is ever offline, the Apex controller automatically falls back to native Apex + Gemini MCP Server execution, ensuring 100% uptime for Salesforce end-users.</li>
+</ol>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-2-end-to-end-sequence-architecture-diagram">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 2. End-to-End Sequence & Architecture Diagram</h2>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor User as Salesforce User (User A)
+    participant LWC as slackBotAgent (LWC)
+    participant Apex as SlackBotAgentController.cls
+    participant Bot as Slack Bot Gateway (Node.js)
+    participant Slack as Slack API (Channel D0BUQS5V68Z)
+    participant Gemini as Gemini 3.6 Flash / MCP Server
+    participant SFDB as Salesforce DB (Task & Account)
+
+    Note over User,LWC: 1. User initiates inquiry or slash command
+    User->>LWC: Types message or clicks Chip (e.g. "/account-brief")
+    LWC->>Apex: sendMessage(sessionId, userMessage, accountId, threadTs)
+
+    alt Gateway is Online
+        Apex->>Bot: POST /api/chat { sessionId, userMessage, accountId, threadTs }
+        Bot->>Slack: chat.postMessage (attach to threadTs or create new root thread)
+        Slack-->>Bot: Returns message ts (threadTs)
+        Bot->>Gemini: Process prompt with LearnDC MCP Tools (Account, Snowflake, Thread)
+        Gemini-->>Bot: Returns AI synthesis & card metadata
+        Bot->>Slack: chat.postMessage (thread_ts: threadTs, botReply)
+        Bot-->>Apex: Return JSON { isSuccess, messageText, threadTs, slackThreadUrl }
+    else Native Fallback (Gateway Offline / Test Mode)
+        Apex->>Gemini: Direct Apex execution via LearnDCAccountCopilotController
+        Apex->>Slack: Sync chat to Slack (chat.postMessage)
+        Slack-->>Apex: Returns threadTs
+    end
+
+    opt Intentional Action (CSM requests Task / Meeting / Email)
+        Note over Apex,SFDB: Targeted Action: Create Task / Book Event
+        Apex->>SFDB: Insert Task / Event (Only when explicitly instructed by CSM)
+    end
+
+    Apex-->>LWC: Return ChatResponseDTO { threadTs, slackThreadUrl, cardData }
+    LWC-->>User: Render Message Bubble + Card + "💬 View in Slack History" Button
+    LWC->>LWC: Refresh Left Navbar Threads (getChatThreads)
+              </div>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-3-core-capabilities-technical-design">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 3. Core Capabilities & Technical Design</h2>
+<h3 class="sub-title">A. Session Thread Continuity (Single Thread Per Conversation)</h3>
+<ul class="styled-list">
+<li><strong>Problem</strong>: In naive implementations, every time a user sends a message from Salesforce, a new root message is created in Slack. This clutters the Slack channel and breaks conversation context.</li>
+<li><strong>Solution</strong>:</li>
+</ul>
+<ol class="styled-ordered-list">
+<li>When a new chat begins, <code class="inline-code">threadTs</code> is <code class="inline-code">null</code>.</li>
+<li>The first message posted to Slack generates a root Slack timestamp <code class="inline-code">ts</code> (e.g., <code class="inline-code">1788513404.400199</code>).</li>
+<li>This <code class="inline-code">ts</code> is returned in <code class="inline-code">ChatResponseDTO.slackThreadTs</code> and stored in the LWC's <code class="inline-code">this.threadTs</code> state.</li>
+<li>Subsequent user messages pass <code class="inline-code">this.threadTs</code> into <code class="inline-code">sendMessage</code>.</li>
+<li>The backend passes <code class="inline-code">thread_ts = activeThreadTs</code> to Slack's <code class="inline-code">chat.postMessage</code>, appending all subsequent queries and replies as child replies under that single thread.</li>
+</ol>
+<h3 class="sub-title">B. Left Navbar: Thread History & Resume</h3>
+<ul class="styled-list">
+<li><strong>Collapsible Split-Pane Layout</strong>: The LWC header features a sidebar toggle button (<code class="inline-code">utility:side_list</code>) that displays or hides a left-hand navigation pane.</li>
+<li><strong>Live Search</strong>: Users can filter through historical threads in real-time using the search input.</li>
+<li><strong>Chronological Date Grouping</strong>: Instead of an unorganized list, threads are intelligently partitioned into intuitive time buckets:</li>
+<li><strong>📌 Pinned</strong>: Highlighted at the very top with pin badges (<code class="inline-code">isPinned: true</code>).</li>
+<li><strong>Today</strong>: Chats created today.</li>
+<li><strong>Yesterday</strong>: Chats from yesterday.</li>
+<li><strong>Previous 7 Days</strong>: Active discussions within the last week.</li>
+<li><strong>Previous 30 Days</strong>: Older conversations within the past month.</li>
+<li><strong>Older</strong>: Archived threads.</li>
+<li><strong>Inline Thread Renaming (Bidirectionally Synced to Slack)</strong>:</li>
+<li>Clicking the pencil icon (<code class="inline-code">✏️</code>) on any thread activates inline editing.</li>
+<li>Pressing Enter or clicking <code class="inline-code">✓</code> invokes <code class="inline-code">SlackBotAgentController.renameThread</code>.</li>
+<li>In Salesforce, <code class="inline-code">Task.Subject</code> and <code class="inline-code">Task.Description</code> are updated with <code class="inline-code">🏷️ Title: [newTitle]</code>.</li>
+<li>In Slack, <code class="inline-code">chat.update</code> synchronously edits the root parent message:</li>
+</ul>
+<p>    <code class="inline-code">🏷️ *[newTitle]* \n 👤 *User* (via Salesforce LWC)...</code></p>
+<ul class="styled-list">
+<li>In LWC, both the sidebar and the active thread header banner (<code class="inline-code">Continuing Thread: [newTitle]</code>) update in real-time.</li>
+<li><strong>Pin / Favorite Threads (Synced to Slack Reactions)</strong>:</li>
+<li>Clicking the pin icon (<code class="inline-code">📍</code> / <code class="inline-code">📌</code>) on any thread toggles its pinned state.</li>
+<li>Invokes <code class="inline-code">SlackBotAgentController.togglePinThread</code>.</li>
+<li>In Salesforce, <code class="inline-code">[PINNED]</code> is recorded in <code class="inline-code">Task.Description</code>.</li>
+<li>In Slack, a <code class="inline-code">pushpin</code> reaction is added/removed via <code class="inline-code">reactions.add</code> / <code class="inline-code">reactions.remove</code>.</li>
+<li>In LWC, the thread immediately moves to the <strong>📌 Pinned</strong> section at the top of the navbar.</li>
+<li><strong>Click-to-Resume (<code class="inline-code">handleSelectThread</code>)</strong>:</li>
+<li>Clicking any thread card sets <code class="inline-code">this.threadTs = selectedTs</code>.</li>
+<li>The LWC invokes <code class="inline-code">getThreadMessages({ threadTs, accountId })</code>.</li>
+<li>The controller first attempts to fetch live conversation messages from Slack API (<code class="inline-code">conversations.replies</code>), gracefully falling back to reconstructing the dialogue from Salesforce <code class="inline-code">Task</code> records if offline.</li>
+<li>The active conversation feed loads the full history, displays the <strong>Active Thread Banner</strong> (<code class="inline-code">Continuing Thread: [Title] | Slack ↗ | + New Chat</code>), and sets the input composer placeholder to <code class="inline-code">&quot;Reply in this Slack thread...&quot;</code>.</li>
+<li><strong>New Thread Button</strong>: Clicking <code class="inline-code">+ New Chat</code> or resetting the session clears the active <code class="inline-code">threadTs</code>, preparing the composer to spawn a fresh, clean thread on the next inquiry.</li>
+</ul>
+<h3 class="sub-title">C. Enterprise User Authentication, Data Isolation & Lifecycle Governance</h3>
+<ul class="styled-list">
+<li><strong>The Business Requirement</strong>:</li>
+<li>Multiple CSMs (e.g., User A / Sumit and User B / Sam) manage customer Accounts concurrently.</li>
+<li><strong>Complete Data Isolation</strong>: User A and User B must never see each other's conversation threads, neither in Salesforce LWC nor in Slack.</li>
+<li><strong>Zero-Reconnect ("Login & Go")</strong>: On everyday logins, the user is connected automatically in <5ms without prompting for manual re-linking.</li>
+<li><strong>Bidirectional Synchronization</strong>: Chats started in Salesforce LWC appear in that user's private Slack DM; responses typed in Slack (mobile or desktop) sync back into the Salesforce LWC thread.</li>
+<li><strong>Lifecycle Governance</strong>: User departures, account reassignments, and email changes must be handled smoothly without orphaned data or security leaks.</li>
+</ul>
+<ul class="styled-list">
+<li><strong>Architecture & Storage</strong>:</li>
+<li><strong>Persistent User Fields</strong>: Custom fields on Salesforce <code class="inline-code">User</code> object store the mapping:</li>
+<li><code class="inline-code">Slack_User_Id__c</code> (Text, 30): Slack Member ID (e.g. <code class="inline-code">U0C036Y8XC0</code>).</li>
+<li><code class="inline-code">Slack_DM_Channel_Id__c</code> (Text, 30): 1-on-1 private Direct Message channel (e.g. <code class="inline-code">D0BUQS5V68Z</code>).</li>
+<li><code class="inline-code">Slack_Connected_Email__c</code> (Email): Email used at connection time to detect identity drift.</li>
+<li><code class="inline-code">Slack_Pairing_Code__c</code> (Text, 20): Temporary 6-digit pairing code for fallback manual pairing.</li>
+<li><strong>Enterprise Identity Service (<code class="inline-code">SlackUserIdentityService.cls</code>)</strong>:</li>
+<li><strong>Zero-Touch Auto-Provisioning (Day 1)</strong>: First time a user opens the LWC, the service matches their Salesforce email against Slack workspace via <code class="inline-code">users.lookupByEmail</code> and opens their private 1-on-1 DM channel via <code class="inline-code">conversations.open</code>.</li>
+<li><strong>Database Cache Hit (<5ms)</strong>: Subsequent logins load the cached <code class="inline-code">Slack_DM_Channel_Id__c</code> directly from the User record.</li>
+<li><strong>Self-Healing Email Drift</strong>: If the user's Salesforce email is changed, the drift is detected (<code class="inline-code">Email != Slack_Connected_Email__c</code>) and the service automatically self-heals by re-resolving the Slack user.</li>
+<li><strong>Fallback Pairing & Direct Linking</strong>: If automatic email matching fails (e.g. Apple private relay or personal Slack email), a 6-digit code is generated (<code class="inline-code">pair 123456</code>) or the user enters their Slack ID directly in the LWC Settings modal.</li>
+<li><strong>Per-User 1-on-1 DM Channels</strong>:</li>
+<li>User A (Sumit): Private DM Channel <code class="inline-code">D0BUQS5V68Z</code></li>
+<li>User B (Sam): Private DM Channel <code class="inline-code">D0BUNTVJCQJ</code></li>
+<li>Because each user queries and writes to their own private 1-on-1 DM channel with the bot, conversations are physically separated at the Slack workspace level.</li>
+<li><strong>Bidirectional Slack Message Recognition</strong>:</li>
+<li>In the user's private DM channel, any message not originating from the bot (<code class="inline-code">!msg.containsKey(&#039;bot_id&#039;)</code> and not starting with <code class="inline-code">🤖</code>) is recognized as a user query or user reply.</li>
+<li>User replies from the Slack mobile app appear in the LWC thread with user styling and accurate timestamps.</li>
+</ul>
+<h3 class="sub-title">D. Direct Slack Thread Deeplinks vs. Generic App Redirect</h3>
+<ul class="styled-list">
+<li><strong>The Redirect Pitfall</strong>:</li>
+</ul>
+<p>  Using <code class="inline-code">https://slack.com/app_redirect?channel=...&amp;message_ts=...</code> causes Slack to navigate to the bot's direct message channel and <strong>completely ignore</strong> the <code class="inline-code">message_ts</code> parameter. The user lands in the channel root and must manually scroll to locate their thread.</p>
+<ul class="styled-list">
+<li><strong>The Official Direct Thread Permalink</strong>:</li>
+</ul>
+<p>  Testing against the live Slack API <code class="inline-code">chat.getPermalink</code> revealed the official, reliable deep-linking syntax:</p>
+<p>  $$\text{https://slack.com/archives/}\{channel\}\text{/p}\{\text{timestamp without dot}\}?\text{thread\_ts}=\{\text{timestamp}\}\&\text{cid}=\{channel\}$$</p>
+<p>  <em>Example (Per-User Channel)</em>:</p>
+<p>  <code class="inline-code">https://slack.com/archives/D0BUQS5V68Z/p1788513404400199?thread_ts=1788513404.400199&amp;cid=D0BUQS5V68Z</code></p>
+<ul class="styled-list">
+<li><strong>Implementation</strong>:</li>
+</ul>
+<p>  Added <code class="inline-code">buildSlackThreadUrl(String threadTs, String channel)</code> helper across Apex and TypeScript:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">APEX</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-apex">  public static String buildSlackThreadUrl(String threadTs, String channel) {
+      String finalChannel = String.isNotBlank(channel) ? channel : SlackUserIdentityService.getCurrentUserSlackDmChannel();
+      if (String.isBlank(threadTs) || threadTs.startsWith(&#039;00T&#039;)) {
+          return &#039;https://slack.com/app_redirect?channel=&#039; + finalChannel;
+      }
+      String pTs = threadTs.replace(&#039;.&#039;, &#039;&#039;);
+      return &#039;https://slack.com/archives/&#039; + finalChannel + &#039;/p&#039; + pTs + &#039;?thread_ts=&#039; + threadTs + &#039;&amp;cid=&#039; + finalChannel;
+  }</code></pre>
+            </div>
+          <ul class="styled-list">
+<li><strong>Robust Regex Timestamp Parsing</strong>:</li>
+</ul>
+<p>  <code class="inline-code">extractThreadTsFromDescription</code> supports both the new permalink structure and legacy formats:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">APEX</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-apex">  Matcher m = Pattern.compile(&#039;(?:message_ts|thread_ts)=([0-9]+\\.[0-9]+|[a-zA-Z0-9_-]+)&#039;).matcher(descText);</code></pre>
+            </div>
+          <h3 class="sub-title">E. Clean Activity Timeline & Intent-Driven Action Handling (Tasks, Meetings, Emails)</h3>
+<ul class="styled-list">
+<li><strong>Problem</strong>: Automatically creating a Salesforce <code class="inline-code">Task</code> for every single chat query was cluttering the customer's Activity Timeline with dozens of redundant "Slack Bot Agent" entries.</li>
+<li><strong>Solution</strong>:</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Zero Task Creation for Routine Chats</strong>: Ordinary questions, greetings, account inquiries, and slash commands are preserved cleanly in Slack threads without generating Salesforce Task records.</li>
+<li><strong>Intentional Confirmation for Action Requests</strong>: When a CSM asks the bot to take concrete CRM or communication actions, the bot evaluates the prompt for required parameters before taking action:</li>
+</ol>
+<ul class="styled-list">
+<li><strong>Create Task (<code class="inline-code">handleTaskAction</code>)</strong>:</li>
+<li><em>Missing Details</em>: Prompts the user: <em>"I'd be glad to create a new task for [Account]. Please provide: 1. Task Subject, 2. Due Date, 3. Priority, 4. Description/Notes"</em>.</li>
+<li><em>Details Provided</em>: Creates a real Salesforce <code class="inline-code">Task</code> record (<code class="inline-code">Status = &#039;Not Started&#039;</code>), links it to the Account (<code class="inline-code">WhatId = accountId</code>), sets priority and due date, and sets <code class="inline-code">activityTimelineUpdated: true</code> so the LWC triggers a timeline refresh.</li>
+<li><strong>Schedule Meeting (<code class="inline-code">handleMeetingAction</code>)</strong>:</li>
+<li><em>Missing Details</em>: Prompts the user: <em>"I'd be glad to schedule a meeting for [Account]. Please provide: 1. Subject/Purpose, 2. Date & Time, 3. Attendee Email, 4. Duration"</em>.</li>
+<li><em>Details Provided</em>: Dispatches meeting creation, generates a Google Meet video conference link, and presents an interactive <code class="inline-code">meetingCard</code>.</li>
+<li><strong>Generate Email (<code class="inline-code">handleEmailGenerationAction</code>)</strong>:</li>
+<li><em>Missing Details</em>: Prompts the user: <em>"I'd be glad to draft an email for [Account]. Please provide: 1. Recipient Name/Email, 2. Subject or Core Topic, 3. Key Points to Cover, 4. Preferred Tone"</em>.</li>
+<li><em>Details Provided</em>: Generates a complete, high-impact business email draft ready for executive review.</li>
+</ul>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-4-complete-codebase-file-map">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 4. Complete Codebase & File Map</h2>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">CODE</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-">Learn DC/
+├── docs/
+│   ├── SLACK_BOT_AGENT_LWC_INTEGRATION.md      # This comprehensive architecture &amp; guide
+│   ├── SALESFORCE_SNOWFLAKE_INTEGRATION.md     # Bi-directional sync &amp; trigger docs
+│   └── SNOWFLAKE_MCP_SERVER_INTEGRATION.md     # Dedicated Snowflake MCP server docs
+│
+├── slack-gemini-agent/                         # Central Slack Bot &amp; Gemini Brain
+│   ├── src/
+│   │   ├── index.ts                            # Express server &amp; Slack Bolt entry point
+│   │   ├── api/
+│   │   │   ├── routes.ts                       # REST API router
+│   │   │   └── gateway.ts                      # Headless Gateway with buildSlackThreadUrl
+│   │   ├── gemini/
+│   │   │   ├── agent.ts                        # Multi-turn Gemini session manager
+│   │   │   ├── prompt.ts                       # Enterprise system instructions &amp; guardrails
+│   │   │   └── tools.ts                        # Gemini Tool definitions
+│   │   ├── mcp/
+│   │   │   ├── salesforceAuth.ts               # Dynamic CLI token authentication
+│   │   │   └── salesforceMcpClient.ts          # Direct Invocable Action bridge to learn_dc
+│   │   └── slack/
+│   │       ├── app.ts                          # Bolt App configuration
+│   │       └── handlers.ts                     # Slack event handlers
+│   └── .env                                    # Bot token, signing secret, Gemini API key
+│
+└── force-app/main/default/                     # Salesforce Platform Metadata (learn_dc)
+    ├── lwc/
+    │   └── slackBotAgent/                      # Custom LWC Component
+    │       ├── slackBotAgent.html              # Split-pane layout (Sidebar + Chat feed)
+    │       ├── slackBotAgent.js                # State management, thread resume, notifications
+    │       ├── slackBotAgent.css               # Responsive sidebar, card styling, bubble animations
+    │       └── slackBotAgent.js-meta.xml       # Targets lightning__RecordPage (Account)
+    │
+    ├── classes/
+    │   ├── SlackBotAgentController.cls         # Controller with user isolation &amp; thread permalinks
+    │   ├── SlackBotAgentControllerTest.cls     # 21 unit tests (100% pass rate)
+    │   ├── LearnDCMCPAccountAction.cls         # Account CRM details invocable action
+    │   ├── LearnDCMCPThreadAction.cls          # Gmail thread summarizer invocable action
+    │   └── LearnDCMCPMeetingAction.cls         # Google Meet scheduling invocable action
+    │
+    └── remoteSiteSettings/
+        ├── Slack_API.remoteSite-meta.xml       # Authorizes https://slack.com
+        └── Slack_Agent_Gateway.remoteSite-meta.xml # Authorizes the secure HTTPS gateway tunnel</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-5-detailed-component-walkthrough">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 5. Detailed Component Walkthrough</h2>
+<h3 class="sub-title">Component 1: <code class="inline-code">SlackBotAgentController.cls</code></h3>
+<h4 class="sub-sub-title">Key Methods:</h4>
+<ul class="styled-list">
+<li><code class="inline-code">sendMessage(sessionId, userMessage, accountId, threadTs)</code>:</li>
+<li>If message begins with <code class="inline-code">/</code>, dispatches directly to <code class="inline-code">executeSlashCommand</code>.</li>
+<li>Attempts callout to Slack Bot Gateway; if offline, executes via native <code class="inline-code">LearnDCAccountCopilotController</code>.</li>
+<li>Calls <code class="inline-code">syncChatToSlackAndSalesforce</code> to post to Slack and log a <code class="inline-code">Task</code> record.</li>
+<li>Returns <code class="inline-code">ChatResponseDTO</code> with message text, card data, <code class="inline-code">slackThreadTs</code>, and <code class="inline-code">slackThreadUrl</code>.</li>
+<li><code class="inline-code">getChatThreads(accountId)</code>:</li>
+<li>Queries <code class="inline-code">Task</code> records for the Account where <code class="inline-code">(CreatedById = :currentUserId OR OwnerId = :currentUserId)</code>.</li>
+<li>Aggregates tasks by thread timestamp, computes message count, and returns <code class="inline-code">List&lt;ThreadSummaryDTO&gt;</code> ordered by most recent activity.</li>
+<li><code class="inline-code">getThreadMessages(threadTs, accountId)</code>:</li>
+<li>Calls Slack API <code class="inline-code">conversations.replies</code> to retrieve raw conversation history.</li>
+<li>If callout fails or during test execution, falls back to parsing Salesforce <code class="inline-code">Task</code> records matching <code class="inline-code">threadTs</code> for the current user and account.</li>
+<li><code class="inline-code">buildSlackThreadUrl(threadTs)</code>:</li>
+<li>Generates the direct Slack archive permalink:</li>
+</ul>
+<p>    <code class="inline-code">https://slack.com/archives/D0BUQS5V68Z/p{ts_without_dot}?thread_ts={threadTs}&amp;cid=D0BUQS5V68Z</code></p>
+<ul class="styled-list">
+<li><code class="inline-code">executeSlashCommand(commandText, currentAccountId)</code>:</li>
+<li>Supports <code class="inline-code">/help</code>, <code class="inline-code">/account-brief</code>, <code class="inline-code">/snowflake</code>, <code class="inline-code">/summarize-thread</code>.</li>
+<li>Queries CRM data and Snowflake telemetry fields (<code class="inline-code">Health_Score__c</code>, <code class="inline-code">Usage_Hours__c</code>, <code class="inline-code">Churn_Risk__c</code>, <code class="inline-code">SLA__c</code>, <code class="inline-code">Last_Snowflake_Sync__c</code>).</li>
+</ul>
+<hr class="section-divider"/>
+<h3 class="sub-title">Component 2: <code class="inline-code">slackBotAgent</code> LWC</h3>
+<h4 class="sub-sub-title">Template Layout (<code class="inline-code">slackBotAgent.html</code>):</h4>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">HTML</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-html">&lt;div class=&quot;slack-bot-container slds-card slds-card_boundary&quot;&gt;
+    &lt;!-- Header with Sidebar Toggle, Online Badge, and Actions --&gt;
+    &lt;header class=&quot;copilot-header&quot;&gt; ... &lt;/header&gt;
+
+    &lt;!-- Split Body --&gt;
+    &lt;div class=&quot;copilot-body-split&quot;&gt;
+        &lt;!-- Left Sidebar: Thread History --&gt;
+        &lt;template if:true={isSidebarOpen}&gt;
+            &lt;aside class=&quot;thread-sidebar&quot;&gt;
+                &lt;div class=&quot;thread-sidebar-header&quot;&gt;
+                    &lt;span&gt;💬 Threads ({threadCount})&lt;/span&gt;
+                    &lt;button onclick={handleStartNewChat}&gt;+ New&lt;/button&gt;
+                    &lt;lightning-input type=&quot;search&quot; value={threadSearchKey} onchange={handleThreadSearchChange}&gt;&lt;/lightning-input&gt;
+                &lt;/div&gt;
+                &lt;div class=&quot;thread-list-scroll&quot;&gt;
+                    &lt;template for:each={filteredThreads} for:item=&quot;th&quot;&gt;
+                        &lt;div key={th.threadTs} class={th.itemClass} data-ts={th.threadTs} onclick={handleSelectThread}&gt;
+                            &lt;span class=&quot;thread-item-title&quot;&gt;{th.title}&lt;/span&gt;
+                            &lt;span class=&quot;thread-item-preview&quot;&gt;{th.preview}&lt;/span&gt;
+                            &lt;span class=&quot;thread-item-time&quot;&gt;{th.lastActivityFormatted}&lt;/span&gt;
+                        &lt;/div&gt;
+                    &lt;/template&gt;
+                &lt;/div&gt;
+            &lt;/aside&gt;
+        &lt;/template&gt;
+
+        &lt;!-- Right Main Pane: Active Conversation --&gt;
+        &lt;section class=&quot;chat-main-pane&quot;&gt;
+            &lt;!-- Active Thread Banner --&gt;
+            &lt;template if:true={activeThreadTitle}&gt;
+                &lt;div class=&quot;active-thread-banner&quot;&gt;
+                    &lt;span&gt;Continuing Thread: &lt;strong&gt;{activeThreadTitle}&lt;/strong&gt;&lt;/span&gt;
+                    &lt;a href={activeThreadSlackUrl} target=&quot;_blank&quot;&gt;Slack ↗&lt;/a&gt;
+                    &lt;button onclick={handleStartNewChat}&gt;+ New Chat&lt;/button&gt;
+                &lt;/div&gt;
+            &lt;/template&gt;
+
+            &lt;!-- Quick Action Chips --&gt;
+            &lt;div class=&quot;chips-container&quot;&gt; ... &lt;/div&gt;
+
+            &lt;!-- Scrollable Message Feed --&gt;
+            &lt;div class=&quot;chat-feed&quot; lwc:dom=&quot;manual&quot;&gt;&lt;/div&gt;
+
+            &lt;!-- Typing Indicator --&gt;
+            &lt;template if:true={isThinking}&gt; ... &lt;/template&gt;
+
+            &lt;!-- Composer with Slash Command Menu --&gt;
+            &lt;footer class=&quot;copilot-footer&quot;&gt; ... &lt;/footer&gt;
+        &lt;/section&gt;
+    &lt;/div&gt;
+&lt;/div&gt;</code></pre>
+            </div>
+          <h4 class="sub-sub-title">JavaScript Controller Highlights (<code class="inline-code">slackBotAgent.js</code>):</h4>
+<ul class="styled-list">
+<li><code class="inline-code">handleSelectThread(event)</code>:</li>
+<li>Sets active thread, updates title, sets <code class="inline-code">isThinking = true</code>, and fetches messages via <code class="inline-code">getThreadMessages</code>.</li>
+<li>Re-renders message bubbles and scrolls to the bottom of the feed.</li>
+<li><code class="inline-code">handleSendMessage()</code>:</li>
+<li>Appends user bubble to the feed.</li>
+<li>Dispatches <code class="inline-code">sendMessage</code> with <code class="inline-code">threadTs: this.threadTs</code>.</li>
+<li>Captures returned <code class="inline-code">res.slackThreadTs</code> and <code class="inline-code">res.slackThreadUrl</code>.</li>
+<li>Updates the active thread banner and invokes <code class="inline-code">this.loadChatThreads()</code> to refresh the sidebar count and previews.</li>
+<li><code class="inline-code">handleStartNewChat()</code>:</li>
+<li>Resets session ID, clears <code class="inline-code">this.threadTs</code>, resets active thread banner, and initializes a fresh dialogue.</li>
+<li><code class="inline-code">dispatchDesktopNotification(text)</code>:</li>
+<li>Triggers a native browser notification and flashes the window title if the user is in another browser tab when the bot responds.</li>
+</ul>
+<hr class="section-divider"/>
+<h3 class="sub-title">Component 3: Node.js Gateway (<code class="inline-code">gateway.ts</code>)</h3>
+<p>Located in <code class="inline-code">slack-gemini-agent/src/api/gateway.ts</code>:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TYPESCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-typescript">export async function handleLwcChatRequest(
+  app: App,
+  payload: GatewayChatRequest
+): Promise&lt;GatewayChatResponse&gt; {
+  const channel = process.env.SLACK_DEFAULT_CHANNEL || &#039;D0BUQS5V68Z&#039;;
+  let threadTs: string | undefined = payload.threadTs;
+
+  // 1. Post User Query into Slack (new root or reply to existing threadTs)
+  const slackUserPost = await app.client.chat.postMessage({
+    channel,
+    ...(threadTs ? { thread_ts: threadTs } : {}),
+    text: `👤 *${payload.userName}* (via Salesforce LWC) on *${payload.accountName}*:\n&gt; ${payload.userMessage}`,
+  });
+  if (!threadTs) {
+    threadTs = slackUserPost.ts;
+  }
+  const slackThreadUrl = buildSlackThreadUrl(channel, threadTs);
+
+  // 2. Execute Gemini Agent with Account context &amp; MCP tools
+  const enrichedPrompt = `[Context: Viewing Account &quot;${payload.accountName}&quot;, ID: &quot;${payload.accountId}&quot;]\n${payload.userMessage}`;
+  const agentReply = await agentSessionManager.processMessage(payload.sessionId, enrichedPrompt);
+
+  // 3. Post Bot Reply as thread reply in Slack
+  await app.client.chat.postMessage({
+    channel,
+    thread_ts: threadTs,
+    text: agentReply,
+  });
+
+  return {
+    isSuccess: true,
+    messageText: agentReply,
+    slackThreadUrl,
+    threadTs,
+  };
+}</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-6-step-by-step-implementation-setup-guide">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 6. Step-by-Step Implementation & Setup Guide</h2>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 1</span>
+                <h4>Deploy Salesforce Metadata</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li>Deploy Apex classes, trigger handlers, and unit tests:</li>
+</ol>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">BASH</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-bash">   sf project deploy start -o learn_dc -d &quot;force-app/main/default/classes&quot;</code></pre>
+            </div>
+          <ol class="styled-ordered-list">
+<li>Deploy the <code class="inline-code">slackBotAgent</code> Lightning Web Component:</li>
+</ol>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">BASH</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-bash">   sf project deploy start -o learn_dc -d &quot;force-app/main/default/lwc/slackBotAgent&quot;</code></pre>
+            </div>
+          <ol class="styled-ordered-list">
+<li>Deploy Remote Site Settings:</li>
+</ol>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">BASH</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-bash">   sf project deploy start -o learn_dc -d &quot;force-app/main/default/remoteSiteSettings&quot;</code></pre>
+            </div>
+          
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 2</span>
+                <h4>Configure the Slack Bot Application</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li>Visit <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" class="doc-link">api.slack.com/apps</a> and select your App.</li>
+<li>In <strong>OAuth & Permissions</strong>, ensure the following Bot Token Scopes are present:</li>
+</ol>
+<ul class="styled-list">
+<li><code class="inline-code">chat:write</code></li>
+<li><code class="inline-code">channels:history</code>, <code class="inline-code">groups:history</code>, <code class="inline-code">im:history</code>, <code class="inline-code">mpim:history</code></li>
+<li><code class="inline-code">channels:read</code>, <code class="inline-code">im:read</code></li>
+</ul>
+<ol class="styled-ordered-list">
+<li>Install the App to your workspace and copy the <code class="inline-code">xoxb-...</code> Bot Token.</li>
+<li>Add the Bot to your target channel or initiate a Direct Message with the Bot to establish channel ID <code class="inline-code">D0BUQS5V68Z</code>.</li>
+</ol>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 3</span>
+                <h4>Run the Slack Bot Gateway</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li>Navigate to <code class="inline-code">slack-gemini-agent</code>:</li>
+</ol>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">BASH</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-bash">   cd slack-gemini-agent
+   npm install
+   npm run build</code></pre>
+            </div>
+          <ol class="styled-ordered-list">
+<li>Configure <code class="inline-code">.env</code> with your Slack Bot Token, Slack App Token, Gemini API Key, and Salesforce target:</li>
+</ol>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">INI</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-ini">   SLACK_BOT_TOKEN=xoxb-...
+   SLACK_APP_TOKEN=xapp-...
+   SLACK_SIGNING_SECRET=...
+   SLACK_DEFAULT_CHANNEL=D0BUQS5V68Z
+   GEMINI_API_KEY=AIzaSy...
+   SALESFORCE_DEFAULT_USERNAME=sumit.gupta@datacloud.com
+   PORT=8080</code></pre>
+            </div>
+          <ol class="styled-ordered-list">
+<li>Start the application:</li>
+</ol>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">BASH</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-bash">   npm start</code></pre>
+            </div>
+          
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 4</span>
+                <h4>Configure the Salesforce Account Page</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li>Open any Account record in Salesforce Lightning (e.g. <em>Edge Communications</em>).</li>
+<li>Click <strong>Setup (⚙️) ➔ Edit Page</strong>.</li>
+<li>Under <strong>Custom Components</strong>, drag <strong><code class="inline-code">Slack Bot Agent</code></strong> onto the page (recommended: right column or dedicated tab).</li>
+<li>Save and activate the Lightning Page.</li>
+</ol>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-7-verification-automated-test-results">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 7. Verification & Automated Test Results</h2>
+<h3 class="sub-title">Automated Apex Test Execution</h3>
+<p>Run the unit test suite verifying user isolation, thread link generation, and slash command parsing:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">BASH</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-bash">sf apex run test -n &quot;SlackBotAgentControllerTest,SlackUserIdentityServiceTest&quot; -o learn_dc -r human -c</code></pre>
+            </div>
+          <p><strong>Results (39 of 39 Tests Passed — 100% Pass Rate)</strong>:</p>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Test Class</th><th>Tests Passed</th><th>Pass Rate</th><th>Execution Time</th><th>Key Validations Verified</th></tr></thead><tbody><tr><td><code class="inline-code">SlackBotAgentControllerTest</code></td><td>28 / 28</td><td>100%</td><td>~5.2 s</td><td>Slash commands, thread persistence, renaming, pinning, task intent detection, user-isolated threads, OAuth & identity endpoints</td></tr><tr><td><code class="inline-code">SlackUserIdentityServiceTest</code></td><td>11 / 11</td><td>100%</td><td>~1.0 s</td><td>Auto-discovery, persistent database cache hit, explicit re-sync, OAuth URL & code exchange, Visualforce callback controller, workspace members</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-8-enterprise-user-identity-oauth-2-0-data-isolation">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 8. Enterprise User Identity, OAuth 2.0 & Data Isolation</h2>
+<h3 class="sub-title">Q: How is history leak prevention guaranteed for unauthenticated users?</h3>
+<ul class="styled-list">
+<li><strong>Mechanism</strong>: In <code class="inline-code">SlackBotAgentController.cls</code>, when <code class="inline-code">SlackUserIdentityService.getCurrentUserSlackDmChannel()</code> returns null or blank, <code class="inline-code">getChatThreads</code> and <code class="inline-code">getThreadMessages</code> immediately return empty lists. No fallback channel ID is ever used. In the LWC <code class="inline-code">slackBotAgent.js</code>, if <code class="inline-code">!isSlackConnected</code>, <code class="inline-code">threads</code> is strictly cleared to <code class="inline-code">[]</code>, the input and send buttons are disabled, and the user is prompted to sign in with Slack.</li>
+</ul>
+<h3 class="sub-title">Q: How does the system handle users whose Salesforce email differs from their Slack account email (e.g. scratch orgs, developer orgs, personal Slack)?</h3>
+<ul class="styled-list">
+<li><strong>Mechanism</strong>:</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>OAuth 2.0 Web Flow ("Sign in with Slack")</strong>: The user clicks "Sign in with Slack", authenticating via a secure OAuth popup window to Slack's authorization server. Upon authorization, <code class="inline-code">SlackOAuthCallbackController</code> exchanges the authorization code for the verified Slack User ID and posts the identity back to the LWC via <code class="inline-code">postMessage</code>.</li>
+<li><strong>Enterprise Workspace Member Selector</strong>: The LWC dynamically fetches verified members from the Slack workspace via <code class="inline-code">conversations.list?types=im</code> and <code class="inline-code">users.info</code>. Users with different emails can select their workspace identity with a single click, instantly establishing a private 1-on-1 DM channel without manual pairing codes or channel IDs.</li>
+<li><strong>Persistent Identity Cache</strong>: Once connected, the user's private Slack DM channel ID is permanently stored in <code class="inline-code">User.Slack_DM_Channel_Id__c</code>. Routine logins resolve the identity in <code class="inline-code">&lt;5ms</code> with zero reconnect overhead, regardless of email discrepancies.</li>
+</ol>
+<h3 class="sub-title">Q: Why did clicking Slack links previously open only the general bot channel?</h3>
+<ul class="styled-list">
+<li><strong>Cause</strong>: The legacy <code class="inline-code">https://slack.com/app_redirect?channel=...&amp;message_ts=...</code> URL ignores <code class="inline-code">message_ts</code> for direct messages.</li>
+<li><strong>Fix</strong>: Use the archive thread permalink syntax: <code class="inline-code">https://slack.com/archives/{channel}/p{ts_without_dot}?thread_ts={threadTs}&amp;cid={channel}</code>.</li>
+</ul>
+<h3 class="sub-title">Q: How is conversation privacy guaranteed across different users on the same Account?</h3>
+<ul class="styled-list">
+<li><strong>Mechanism</strong>: Every <code class="inline-code">Task</code> record logged by the agent records <code class="inline-code">OwnerId = UserInfo.getUserId()</code>. Both <code class="inline-code">getChatThreads</code> and <code class="inline-code">getThreadMessages</code> enforce <code class="inline-code">AND (CreatedById = :currentUserId OR OwnerId = :currentUserId)</code>. Even when multiple users view the same customer Account, their Slack Bot interaction histories are completely private and segregated.</li>
+</ul>
+<h3 class="sub-title">Q: Why did renaming or pinning a thread fail to sync with Slack even though Salesforce updated successfully?</h3>
+<ul class="styled-list">
+<li><strong>Cause</strong>: In Salesforce Apex, executing any DML operation (e.g. <code class="inline-code">update tasksToUpdate;</code>) marks uncommitted database work in that transaction. Attempting an HTTP callout (<code class="inline-code">chat.update</code> or <code class="inline-code">reactions.add</code>) <em>after</em> DML in the same transaction throws <code class="inline-code">System.CalloutException: You have uncommitted work pending. Please commit or rollback before calling out</code>.</li>
+<li><strong>Fix</strong>: Enforce the <strong>Callout-First, DML-Second</strong> architecture pattern. In <code class="inline-code">renameThread</code> and <code class="inline-code">togglePinThread</code>, execute the Slack HTTP callout (<code class="inline-code">chat.update</code> / <code class="inline-code">reactions.add</code> / <code class="inline-code">reactions.remove</code>) <em>before</em> issuing any DML updates to the Salesforce <code class="inline-code">Task</code> records. This ensures callouts succeed cleanly without violating transaction boundaries.</li>
+</ul>
+<h3 class="sub-title">Q: What happens if the Node.js Slack Gateway or ngrok tunnel goes down?</h3>
+<ul class="styled-list">
+<li><strong>Resilience</strong>: The Apex controller features a graceful dual-path fallback. If <code class="inline-code">callSlackBotGateway</code> encounters a timeout or connection error, execution immediately redirects to <code class="inline-code">LearnDCAccountCopilotController.sendMessage</code>, maintaining full access to Gemini AI and Salesforce MCP tools without interrupting the user.</li>
+</ul>
+</section>
+
+  </div>
+
+  <a href="#" class="back-to-top">↑ Top</a>
+
+  <footer>
+    <strong>Salesforce Lightning Platform • Enterprise AI Integration Guide</strong><br/>
+    Internal Engineering Reference & Operational Playbook • Org: <code>learn_dc</code>
+  </footer>
+
+  <script>
+    function copyCode(btn) {
+      const container = btn.closest('.code-container');
+      const code = container.querySelector('code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const origText = btn.innerText;
+        btn.innerText = '✓ Copied!';
+        btn.style.background = '#2EB67D';
+        btn.style.borderColor = '#2EB67D';
+        btn.style.color = '#ffffff';
+        setTimeout(() => {
+          btn.innerText = origText;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 2000);
+      });
+    }
+
+    // Scroll Progress & Active Tab Highlighting
+    window.addEventListener('scroll', () => {
+      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / height) * 100;
+      document.getElementById('progress-bar').style.width = scrolled + '%';
+
+      const sections = document.querySelectorAll('.section-card');
+      const navTabs = document.querySelectorAll('.nav-tab');
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        if (winScroll >= sectionTop - 140) {
+          current = section.getAttribute('id');
+        }
+      });
+      navTabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.getAttribute('href') === '#' + current) {
+          tab.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+  

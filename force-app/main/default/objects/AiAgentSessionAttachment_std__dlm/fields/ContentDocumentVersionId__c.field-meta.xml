@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>ContentDocumentVersionId__c</fullName>
+    <label>Content Document Version Id</label>
+    <length>60</length>
+    <mktDataModelFieldAttributes>
+        <definitionCreationType>Standard</definitionCreationType>
+        <isDynamicLookup>false</isDynamicLookup>
+        <labelOverride>Content Document Version Id</labelOverride>
+        <masterLabel>Content Document Version Id</masterLabel>
+        <refAttrDeveloperName>ContentDocumentVersionId</refAttrDeveloperName>
+        <usageTag>None</usageTag>
+    </mktDataModelFieldAttributes>
+    <required>false</required>
+    <type>Text</type>
+</CustomField>

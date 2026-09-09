@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Google_ETag__c</fullName>
+    <description>Google ETag identifier for concurrency and version tracking.</description>
+    <externalId>false</externalId>
+    <label>Google ETag</label>
+    <length>255</length>
+    <required>false</required>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

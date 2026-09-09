@@ -1,0 +1,141 @@
+<apex:page controller="SlackOAuthCallbackController" action="{!handleCallback}" showHeader="false" sidebar="false" standardStylesheets="false">
+    <html xmlns="http://www.w3.org/1999/xhtml">
+        <head>
+            <title>Slack Workspace Authentication</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+            <style>
+                body {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-height: 100vh;
+                    margin: 0;
+                    padding: 20px;
+                    box-sizing: border-box;
+                }
+                .auth-card {
+                    background: #ffffff;
+                    border-radius: 12px;
+                    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+                    padding: 40px 32px;
+                    max-width: 440px;
+                    width: 100%;
+                    text-align: center;
+                    border: 1px solid #e2e8f0;
+                }
+                .slack-icon {
+                    width: 56px;
+                    height: 56px;
+                    margin: 0 auto 16px auto;
+                    display: block;
+                }
+                .status-title {
+                    font-size: 20px;
+                    font-weight: 700;
+                    margin-bottom: 8px;
+                }
+                .status-title.success {
+                    color: #047857;
+                }
+                .status-title.error {
+                    color: #b91c1c;
+                }
+                .status-desc {
+                    font-size: 14px;
+                    color: #475569;
+                    line-height: 1.5;
+                    margin-bottom: 24px;
+                }
+                .badge-pill {
+                    display: inline-block;
+                    background-color: #ecfdf5;
+                    border: 1px solid #a7f3d0;
+                    color: #065f46;
+                    padding: 6px 14px;
+                    border-radius: 9999px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    font-family: monospace;
+                    margin-bottom: 16px;
+                }
+                .btn-close {
+                    background-color: #0f172a;
+                    color: #ffffff;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 10px 20px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: background 0.15s ease;
+                }
+                .btn-close:hover {
+                    background-color: #1e293b;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="auth-card">
+                <svg class="slack-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.8 122.8">
+                    <path fill="#e01e5a" d="M25.8 77.6a12.9 12.9 0 1 1-12.9-12.9h12.9v12.9zm6.5 0a12.9 12.9 0 1 1 25.8 0v32.3a12.9 12.9 0 1 1-25.8 0V77.6z"/>
+                    <path fill="#36c5f0" d="M45.2 25.8a12.9 12.9 0 1 1 12.9-12.9v12.9H45.2zm0 6.5a12.9 12.9 0 1 1 0 25.8H12.9a12.9 12.9 0 1 1 0-25.8h32.3z"/>
+                    <path fill="#2eb67d" d="M97 45.2a12.9 12.9 0 1 1 12.9 12.9H97V45.2zm-6.5 0a12.9 12.9 0 1 1-25.8 0V12.9a12.9 12.9 0 1 1 25.8 0v32.3z"/>
+                    <path fill="#ecb22e" d="M77.6 97a12.9 12.9 0 1 1-12.9 12.9V97h12.9zm0-6.5a12.9 12.9 0 1 1 0-25.8h32.3a12.9 12.9 0 1 1 0 25.8H77.6z"/>
+                </svg>
+
+                <apex:outputPanel rendered="{!isSuccess}">
+                    <h2 class="status-title success">Slack Connected Successfully</h2>
+                    <p class="status-desc">
+                        Your Salesforce account is now officially connected and isolated with your Slack DM.
+                    </p>
+                    <div class="badge-pill">
+                        DM Channel: {!slackDmChannelId}
+                    </div>
+                    <p class="status-desc" style="font-size: 12px; color: #94a3b8;">
+                        Closing authentication window...
+                    </p>
+                    <script>
+                        try {
+                            if (window.opener) {
+                                window.opener.postMessage({
+                                    type: 'SLACK_AUTH_SUCCESS',
+                                    isConnected: true,
+                                    slackUserId: '{!JSENCODE(slackUserId)}',
+                                    slackDmChannelId: '{!JSENCODE(slackDmChannelId)}',
+                                    userName: '{!JSENCODE(userName)}'
+                                }, '*');
+                                setTimeout(function() {
+                                    window.close();
+                                }, 1200);
+                            }
+                        } catch(e) {
+                            console.error('PostMessage error:', e);
+                        }
+                    </script>
+                </apex:outputPanel>
+
+                <apex:outputPanel rendered="{!!isSuccess}">
+                    <h2 class="status-title error">Authentication Failed</h2>
+                    <p class="status-desc">
+                        {!errorMessage}
+                    </p>
+                    <button class="btn-close" onclick="window.close();">Close Window</button>
+                    <script>
+                        try {
+                            if (window.opener) {
+                                window.opener.postMessage({
+                                    type: 'SLACK_AUTH_ERROR',
+                                    message: '{!JSENCODE(errorMessage)}'
+                                }, '*');
+                            }
+                        } catch(e) {
+                            console.error('PostMessage error:', e);
+                        }
+                    </script>
+                </apex:outputPanel>
+            </div>
+        </body>
+    </html>
+</apex:page>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <mktDataModelAttributes>
+        <creationType>Standard</creationType>
+        <dataModelTaxonomy>Salesforce_SFDCReferenceModel_0_93</dataModelTaxonomy>
+        <dataSpaceName>default</dataSpaceName>
+        <description>Captures log events emitted during AI agent sessions, including informational, warning, error, and fatal entries with causal chaining for multi-agent error tracing.</description>
+        <isEnabled>true</isEnabled>
+        <isSegmentable>false</isSegmentable>
+        <isSqlDmo>false</isSqlDmo>
+        <isUsedForMetrics>false</isUsedForMetrics>
+        <labelOverride>AI Agent Session Log</labelOverride>
+        <masterLabel>AI Agent Session Log</masterLabel>
+        <objectCategory>Salesforce_SFDCReferenceModel_0_93.Engagement</objectCategory>
+        <referenceEntityName>AiAgentSessionLog</referenceEntityName>
+    </mktDataModelAttributes>
+</CustomObject>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>rel_1788162147350_end__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <label>AiAgentSessionAttachment_std_AiAgent_rel</label>
+    <referenceTo>ssot__AiAgentSession__dlm</referenceTo>
+    <relationshipLabel>AiAgentSessionAttachment_std_AiAgent_rel</relationshipLabel>
+    <relationshipName>rel_1788162147350_end</relationshipName>
+    <required>false</required>
+    <type>Lookup</type>
+</CustomField>

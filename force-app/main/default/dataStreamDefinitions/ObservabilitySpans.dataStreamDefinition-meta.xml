@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataStreamDefinition xmlns="http://soap.sforce.com/2006/04/metadata">
+    <areHeadersIncludedInFile>false</areHeadersIncludedInFile>
+    <bulkIngest>false</bulkIngest>
+    <creationType>Custom</creationType>
+    <dataConnector>Observability</dataConnector>
+    <dataConnectorType>Observability</dataConnectorType>
+    <dataPlatformDataSetItemName>CONNECTORSFRAMEWORK</dataPlatformDataSetItemName>
+    <dataSource>ObservabilitySpans</dataSource>
+    <isLimitedToNewFiles>false</isLimitedToNewFiles>
+    <isMissingFileFailure>false</isMissingFileFailure>
+    <masterLabel>ObservabilitySpans</masterLabel>
+    <mktDataLakeObject>ObservabilitySpans__dll</mktDataLakeObject>
+    <mktDataTranObject>ObservabilitySpans</mktDataTranObject>
+    <parameters>
+        <fullName>ObservabilitySpans_objectName</fullName>
+        <paramName>objectName</paramName>
+        <value>ObservabilitySpans</value>
+    </parameters>
+</DataStreamDefinition>

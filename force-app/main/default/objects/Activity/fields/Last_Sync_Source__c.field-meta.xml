@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Last_Sync_Source__c</fullName>
+    <description>Identifies whether the last modification originated from Salesforce or Google Calendar (for loop prevention).</description>
+    <externalId>false</externalId>
+    <label>Last Sync Source</label>
+    <required>false</required>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>SALESFORCE</fullName>
+                <default>true</default>
+                <label>SALESFORCE</label>
+            </value>
+            <value>
+                <fullName>GOOGLE</fullName>
+                <default>false</default>
+                <label>GOOGLE</label>
+            </value>
+            <value>
+                <fullName>GMAIL</fullName>
+                <default>false</default>
+                <label>GMAIL</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

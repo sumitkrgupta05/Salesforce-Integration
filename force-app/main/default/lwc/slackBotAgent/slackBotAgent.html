@@ -1,0 +1,527 @@
+<template>
+    <div class="slack-bot-container slds-card slds-card_boundary">
+
+        <!-- ================================================================= -->
+        <!-- HEADER                                                            -->
+        <!-- ================================================================= -->
+        <header class="copilot-header slds-p-around_medium slds-border_bottom">
+            <div class="slds-grid slds-grid_vertical-align-center slds-grid_align-spread">
+                <div class="slds-grid slds-grid_vertical-align-center">
+                    <!-- Toggle Sidebar Button -->
+                    <lightning-button-icon
+                        icon-name="utility:side_list"
+                        variant={sidebarButtonVariant}
+                        size="small"
+                        title={sidebarToggleTooltip}
+                        alternative-text="Toggle Thread History"
+                        class="slds-m-right_x-small sidebar-toggle-btn"
+                        onclick={handleToggleSidebar}>
+                    </lightning-button-icon>
+                    <div class="bot-avatar slds-m-right_small">
+                        <lightning-icon icon-name="utility:chat" size="small" variant="inverse"></lightning-icon>
+                    </div>
+                    <div>
+                        <div class="slds-grid slds-grid_vertical-align-center">
+                            <h2 class="copilot-title slds-text-heading_small slds-m-right_x-small">Slack Bot Agent</h2>
+                            <span class={slackBadgeClass} onclick={handleOpenSettings} title={slackBadgeTooltip}>
+                                <span class={slackDotClass}></span> {slackBadgeText}
+                            </span>
+                        </div>
+                        <p class="copilot-subtitle slds-text-body_small">
+                            Gemini 3.6 Flash &bull; LearnDC MCP Server &bull; Permanent Slack History
+                        </p>
+                    </div>
+                </div>
+                <div class="slds-grid slds-grid_vertical-align-center">
+                    <lightning-button-icon
+                        icon-name="utility:settings"
+                        variant="border-filled"
+                        size="small"
+                        title="Slack Account & Identity Settings"
+                        alternative-text="Slack Settings"
+                        class="slds-m-right_xx-small"
+                        onclick={handleOpenSettings}>
+                    </lightning-button-icon>
+                    <lightning-button-icon
+                        icon-name={notificationIconName}
+                        variant={notificationButtonVariant}
+                        size="small"
+                        title={notificationTooltip}
+                        alternative-text="Toggle Desktop Notifications"
+                        class="slds-m-right_xx-small"
+                        onclick={handleToggleNotifications}>
+                    </lightning-button-icon>
+                    <lightning-button-icon
+                        icon-name="utility:add"
+                        variant="border-filled"
+                        size="small"
+                        title="Start New Thread"
+                        alternative-text="New Chat"
+                        class="slds-m-right_xx-small"
+                        onclick={handleStartNewChat}>
+                    </lightning-button-icon>
+                    <lightning-button-icon
+                        icon-name="utility:refresh"
+                        variant="border-filled"
+                        size="small"
+                        title="Reset Chat Screen"
+                        alternative-text="Reset Session"
+                        onclick={handleResetSession}>
+                    </lightning-button-icon>
+                </div>
+            </div>
+
+            <!-- Account Context Bar -->
+            <template if:true={accountName}>
+                <div class="account-context-strip slds-m-top_x-small slds-p-horizontal_small slds-p-vertical_xx-small">
+                    <span class="slds-text-body_small">
+                        🏢 <strong>{accountName}</strong>
+                        <template if:true={csmEmail}> &bull; CSM: {csmEmail}</template>
+                    </span>
+                </div>
+            </template>
+        </header>
+
+        <!-- ================================================================= -->
+        <!-- SPLIT BODY: LEFT NAVBAR (THREADS) + RIGHT CHAT PANE               -->
+        <!-- ================================================================= -->
+        <div class="copilot-body-split">
+
+            <!-- LEFT NAVBAR: SLACK THREAD HISTORY -->
+            <template if:true={isSidebarOpen}>
+                <aside class="thread-sidebar slds-border_right">
+                    <div class="thread-sidebar-header slds-p-around_x-small slds-border_bottom">
+                        <div class="slds-grid slds-grid_vertical-align-center slds-grid_align-spread slds-m-bottom_xx-small">
+                            <span class="thread-sidebar-title">
+                                💬 <strong>Threads ({threadCount})</strong>
+                            </span>
+                            <button class="new-thread-btn" onclick={handleStartNewChat} title="Start fresh conversation thread">
+                                <span>+ New</span>
+                            </button>
+                        </div>
+                        <lightning-input
+                            type="search"
+                            variant="label-hidden"
+                            placeholder="Filter threads..."
+                            value={threadSearchKey}
+                            onchange={handleThreadSearchChange}
+                            class="thread-search-input">
+                        </lightning-input>
+                    </div>
+
+                    <div class="thread-list-scroll">
+                        <template if:true={isLoadingThreads}>
+                            <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak slds-text-body_small">
+                                Loading threads...
+                            </div>
+                        </template>
+
+                        <template if:false={isLoadingThreads}>
+                            <template if:true={hasThreads}>
+                                <template for:each={threadGroups} for:item="grp">
+                                    <div key={grp.id} class="thread-date-group">
+                                        <div class="thread-group-header">
+                                            <span class="group-label">{grp.label}</span>
+                                            <span class="group-count">{grp.count}</span>
+                                        </div>
+                                        <template for:each={grp.threads} for:item="th">
+                                            <div
+                                                key={th.threadTs}
+                                                class={th.itemClass}
+                                                data-ts={th.threadTs}
+                                                onclick={handleSelectThread}
+                                                title={th.title}>
+                                                
+                                                <!-- Inline Edit Mode -->
+                                                <template if:true={th.isEditing}>
+                                                    <div class="thread-inline-edit" onclick={handleStopPropagation}>
+                                                        <input
+                                                            type="text"
+                                                            class="thread-edit-input"
+                                                            value={editingTitle}
+                                                            oninput={handleEditTitleInput}
+                                                            onkeyup={handleEditTitleKeyUp}
+                                                            placeholder="Enter title..."
+                                                            maxlength="80" />
+                                                        <div class="thread-edit-actions">
+                                                            <button class="thread-btn-save" onclick={handleSaveRename} title="Save">✓</button>
+                                                            <button class="thread-btn-cancel" onclick={handleCancelRename} title="Cancel">✕</button>
+                                                        </div>
+                                                    </div>
+                                                </template>
+
+                                                <!-- Normal Mode -->
+                                                <template if:false={th.isEditing}>
+                                                    <div class="thread-item-header">
+                                                        <span class="thread-item-title" title={th.title}>
+                                                            <template if:true={th.isPinned}>
+                                                                <span class="pinned-indicator">📌</span>
+                                                            </template>
+                                                            {th.title}
+                                                        </span>
+                                                        <div class="thread-action-buttons" onclick={handleStopPropagation}>
+                                                            <button
+                                                                class={th.pinButtonClass}
+                                                                data-ts={th.threadTs}
+                                                                data-pinned={th.isPinned}
+                                                                onclick={handleTogglePin}
+                                                                title={th.pinTooltip}>
+                                                                <span>{th.pinIconText}</span>
+                                                            </button>
+                                                            <button
+                                                                class="thread-icon-btn"
+                                                                data-ts={th.threadTs}
+                                                                data-title={th.title}
+                                                                onclick={handleStartRename}
+                                                                title="Rename Thread">
+                                                                <span>✏️</span>
+                                                            </button>
+                                                            <template if:true={th.isSelected}>
+                                                                <span class="active-badge">Active</span>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </template>
+
+                                                <div class="thread-item-preview">{th.preview}</div>
+                                                <div class="thread-item-footer">
+                                                    <span class="thread-item-time">{th.lastActivityFormatted}</span>
+                                                    <span class="thread-item-count">{th.messageCount} msgs</span>
+                                                </div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </template>
+                            <template if:false={hasThreads}>
+                                <div class="thread-empty-state slds-p-around_medium slds-text-align_center">
+                                    <p class="slds-text-body_small slds-text-color_weak">No previous threads found.</p>
+                                    <button class="start-first-chat-btn slds-m-top_x-small" onclick={handleStartNewChat}>
+                                        + Start Conversation
+                                    </button>
+                                </div>
+                            </template>
+                        </template>
+                    </div>
+                </aside>
+            </template>
+
+            <!-- RIGHT PANE: ACTIVE CHAT CONVERSATION -->
+            <section class="chat-main-pane">
+
+                <!-- Active Thread Status Bar (when resuming an existing thread) -->
+                <template if:true={activeThreadTitle}>
+                    <div class="active-thread-banner slds-p-horizontal_small slds-p-vertical_xx-small slds-border_bottom slds-grid slds-grid_vertical-align-center slds-grid_align-spread">
+                        <div class="slds-grid slds-grid_vertical-align-center slds-truncate">
+                            <span class="active-thread-icon slds-m-right_xx-small">🧵</span>
+                            <span class="slds-text-body_small active-thread-text slds-truncate">
+                                Continuing Thread: <strong>{activeThreadTitle}</strong>
+                            </span>
+                        </div>
+                        <div class="slds-grid slds-grid_vertical-align-center slds-no-flex">
+                            <template if:true={activeThreadSlackUrl}>
+                                <a href={activeThreadSlackUrl} target="_blank" rel="noopener noreferrer" class="thread-banner-link slds-m-right_x-small">
+                                    Slack ↗
+                                </a>
+                            </template>
+                            <button class="thread-banner-btn" onclick={handleStartNewChat} title="Start fresh thread">
+                                + New Chat
+                            </button>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- QUICK PROMPT ACTION CHIPS -->
+                <div class="chips-container slds-p-horizontal_medium slds-p-vertical_x-small slds-border_bottom">
+                    <div class="chips-scroll">
+                        <button class="chip-btn slash-chip" data-prompt="/account-brief" onclick={handleChipClick} title="360° Account executive briefing with CRM & Snowflake telemetry">
+                            ⚡ /account-brief
+                        </button>
+                        <button class="chip-btn slash-chip snowflake-chip-btn" data-prompt="/snowflake" onclick={handleChipClick} title="Live Snowflake warehouse telemetry">
+                            ❄️ /snowflake
+                        </button>
+                        <button class="chip-btn" data-prompt="Summarize recent customer email thread and action items" onclick={handleChipClick}>
+                            ⚡ Summarize Emails
+                        </button>
+                        <button class="chip-btn" data-prompt="Who is the CSM and primary contact on this account?" onclick={handleChipClick}>
+                            ⚡ Account &amp; CSM
+                        </button>
+                        <button class="chip-btn slash-chip" data-prompt="/help" onclick={handleChipClick} title="Show slash commands reference">
+                            ⚡ /help
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SCROLLABLE CHAT FEED -->
+                <div class="chat-feed slds-p-around_medium" lwc:dom="manual">
+                    <!-- Messages rendered dynamically via performRender() -->
+                </div>
+
+                <!-- TYPING / THINKING INDICATOR -->
+                <template if:true={isThinking}>
+                    <div class="thinking-bar slds-p-horizontal_medium slds-p-vertical_x-small slds-grid slds-grid_vertical-align-center">
+                        <div class="typing-indicator slds-m-right_x-small">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <span class="slds-text-body_small slds-text-color_weak">
+                            {thinkingStatusText}
+                        </span>
+                    </div>
+                </template>
+
+                <!-- INPUT COMPOSER WITH SLASH COMMAND POPUP -->
+                <footer class="copilot-footer slds-p-around_small slds-border_top">
+
+                    <!-- Slash Command Autocomplete Popover -->
+                    <template if:true={showSlashMenu}>
+                        <div class="slash-menu-popover">
+                            <div class="slash-menu-header">
+                                <span>⚡ SLACK BOT SLASH COMMANDS</span>
+                            </div>
+                            <div class="slash-item" data-cmd="/account-brief" onclick={handleSelectSlashCommand}>
+                                <div class="slash-item-title"><strong>/account-brief</strong> <span class="slash-item-arg">[Account Name]</span></div>
+                                <div class="slash-item-desc">360° briefing with CRM vitals, Snowflake telemetry, &amp; email summary</div>
+                            </div>
+                            <div class="slash-item" data-cmd="/snowflake" onclick={handleSelectSlashCommand}>
+                                <div class="slash-item-title"><strong>/snowflake</strong> <span class="slash-item-arg">[Account Name]</span></div>
+                                <div class="slash-item-desc">Live Snowflake warehouse telemetry (Health Score, Usage, Churn Risk)</div>
+                            </div>
+                            <div class="slash-item" data-cmd="/summarize-thread " onclick={handleSelectSlashCommand}>
+                                <div class="slash-item-title"><strong>/summarize-thread</strong> <span class="slash-item-arg">[Thread ID]</span></div>
+                                <div class="slash-item-desc">Dynamic Gemini AI email thread summarization &amp; action items</div>
+                            </div>
+                            <div class="slash-item" data-cmd="/help" onclick={handleSelectSlashCommand}>
+                                <div class="slash-item-title"><strong>/help</strong></div>
+                                <div class="slash-item-desc">Show all available commands reference guide</div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Unauthenticated Warning Banner -->
+                    <template if:false={isSlackConnected}>
+                        <div class="slds-notify slds-notify_alert slds-theme_warning slds-m-bottom_x-small slds-p-around_xx-small slds-border_radius slds-grid slds-grid_vertical-align-center slds-grid_align-spread">
+                            <span class="slds-text-body_small">
+                                🔒 <strong>Slack Authentication Required:</strong> Connect as <strong>{userEmail}</strong> to chat &amp; synchronize.
+                            </span>
+                            <button class="slds-button slds-button_brand slds-button_small" onclick={handleOfficialSlackLogin} disabled={isAuthenticatingSlack}>
+                                Sign in with Slack
+                            </button>
+                        </div>
+                    </template>
+
+                    <div class="slds-grid slds-grid_vertical-align-center">
+                        <div class="slds-col slds-grow slds-m-right_x-small">
+                            <lightning-input
+                                type="text"
+                                variant="label-hidden"
+                                placeholder={inputPlaceholder}
+                                value={inputMessage}
+                                onchange={handleInputChange}
+                                onkeyup={handleKeyUp}
+                                disabled={isInputDisabled}>
+                            </lightning-input>
+                        </div>
+                        <lightning-button-icon
+                            icon-name="utility:send"
+                            variant="brand"
+                            alternative-text="Send Message"
+                            title="Send"
+                            disabled={isSendDisabled}
+                            onclick={handleSendMessage}>
+                        </lightning-button-icon>
+                    </div>
+                </footer>
+
+            </section>
+        </div>
+
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- SLACK IDENTITY SETTINGS MODAL                                     -->
+    <!-- ================================================================= -->
+    <template if:true={isSettingsOpen}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_small" aria-modal="true">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header slds-theme_default">
+                    <lightning-button-icon
+                        icon-name="utility:close"
+                        variant="bare-inverse"
+                        size="large"
+                        title="Close"
+                        alternative-text="Close"
+                        class="slds-modal__close"
+                        onclick={handleCloseSettings}>
+                    </lightning-button-icon>
+                    <h2 class="slds-modal__title slds-hyphenate slds-text-heading_medium">
+                        ⚡ Slack Account & Identity Isolation
+                    </h2>
+                    <p class="slds-m-top_x-small slds-text-body_small slds-text-color_weak">
+                        Personal 1-on-1 private Slack DM integration with LearnDC
+                    </p>
+                </header>
+
+                <div class="slds-modal__content slds-p-around_medium">
+                    <!-- Status Banner -->
+                    <div class={settingsStatusBannerClass}>
+                        <div class="slds-grid slds-grid_vertical-align-center">
+                            <span class="slds-m-right_x-small slds-text-heading_small">{settingsStatusEmoji}</span>
+                            <div>
+                                <strong>{settingsStatusTitle}</strong>
+                                <p class="slds-text-body_small">{settingsStatusDescription}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Identity Details Card -->
+                    <div class="slds-box slds-m-top_small slds-theme_shade">
+                        <div class="slds-grid slds-wrap slds-grid_pull-padded">
+                            <div class="slds-p-horizontal_small slds-size_1-of-2 slds-m-bottom_x-small">
+                                <div class="slds-text-title_bold slds-text-color_weak">Salesforce User</div>
+                                <div class="slds-text-body_regular">{userFullName}</div>
+                            </div>
+                            <div class="slds-p-horizontal_small slds-size_1-of-2 slds-m-bottom_x-small">
+                                <div class="slds-text-title_bold slds-text-color_weak">User Email</div>
+                                <div class="slds-text-body_regular">{userEmail}</div>
+                            </div>
+                            <div class="slds-p-horizontal_small slds-size_1-of-2 slds-m-bottom_x-small">
+                                <div class="slds-text-title_bold slds-text-color_weak">Slack Member ID</div>
+                                <div class="slds-text-body_regular slds-font-family_monospace">{slackMemberIdDisplay}</div>
+                            </div>
+                            <div class="slds-p-horizontal_small slds-size_1-of-2 slds-m-bottom_x-small">
+                                <div class="slds-text-title_bold slds-text-color_weak">Private 1-on-1 DM Channel</div>
+                                <div class="slds-text-body_regular slds-font-family_monospace">{slackDmChannelDisplay}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Enterprise Official Slack Workspace Authentication -->
+                    <template if:false={isSlackConnected}>
+                        <div class="slds-box slds-m-top_medium slds-p-around_large slds-text-align_center slack-auth-card">
+                            <div class="slds-m-bottom_small">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.8 122.8" style="width: 48px; height: 48px; display: inline-block;">
+                                    <path fill="#e01e5a" d="M25.8 77.6a12.9 12.9 0 1 1-12.9-12.9h12.9v12.9zm6.5 0a12.9 12.9 0 1 1 25.8 0v32.3a12.9 12.9 0 1 1-25.8 0V77.6z"/>
+                                    <path fill="#36c5f0" d="M45.2 25.8a12.9 12.9 0 1 1 12.9-12.9v12.9H45.2zm0 6.5a12.9 12.9 0 1 1 0 25.8H12.9a12.9 12.9 0 1 1 0-25.8h32.3z"/>
+                                    <path fill="#2eb67d" d="M97 45.2a12.9 12.9 0 1 1 12.9 12.9H97V45.2zm-6.5 0a12.9 12.9 0 1 1-25.8 0V12.9a12.9 12.9 0 1 1 25.8 0v32.3z"/>
+                                    <path fill="#ecb22e" d="M77.6 97a12.9 12.9 0 1 1-12.9 12.9V97h12.9zm0-6.5a12.9 12.9 0 1 1 0-25.8h32.3a12.9 12.9 0 1 1 0 25.8H77.6z"/>
+                                </svg>
+                            </div>
+                            <h3 class="slds-text-heading_small slds-text-title_bold slds-m-bottom_xx-small">
+                                Sign in with Slack
+                            </h3>
+                            <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                                Authenticate your account in workspace <strong>AI Studio Agent with Slack</strong> using your Salesforce email: <strong>{userEmail}</strong>
+                            </p>
+
+                            <!-- 1-Click Primary Action -->
+                            <div class="slds-text-align_center slds-m-top_small slds-m-bottom_medium">
+                                <button class="slack-signin-btn" onclick={handleOfficialSlackLogin} disabled={isAuthenticatingSlack} style="width: 100%; max-width: 440px; justify-content: center; margin: 0 auto;">
+                                    <template if:true={isAuthenticatingSlack}>
+                                        <lightning-spinner alternative-text="Authenticating" size="small"></lightning-spinner>
+                                        <span>Authenticating with Slack...</span>
+                                    </template>
+                                    <template if:false={isAuthenticatingSlack}>
+                                        <svg class="slack-signin-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 122.8 122.8">
+                                            <path fill="#e01e5a" d="M25.8 77.6a12.9 12.9 0 1 1-12.9-12.9h12.9v12.9zm6.5 0a12.9 12.9 0 1 1 25.8 0v32.3a12.9 12.9 0 1 1-25.8 0V77.6z"/>
+                                            <path fill="#36c5f0" d="M45.2 25.8a12.9 12.9 0 1 1 12.9-12.9v12.9H45.2zm0 6.5a12.9 12.9 0 1 1 0 25.8H12.9a12.9 12.9 0 1 1 0-25.8h32.3z"/>
+                                            <path fill="#2eb67d" d="M97 45.2a12.9 12.9 0 1 1 12.9 12.9H97V45.2zm-6.5 0a12.9 12.9 0 1 1-25.8 0V12.9a12.9 12.9 0 1 1 25.8 0v32.3z"/>
+                                            <path fill="#ecb22e" d="M77.6 97a12.9 12.9 0 1 1-12.9 12.9V97h12.9zm0-6.5a12.9 12.9 0 1 1 0-25.8h32.3a12.9 12.9 0 1 1 0 25.8H77.6z"/>
+                                        </svg>
+                                        <span>Sign in with Slack</span>
+                                    </template>
+                                </button>
+                            </div>
+
+                            <!-- Optional Alternate Email (Enterprise fallback for differing Slack corporate emails) -->
+                            <div class="slds-form slds-form_stacked slds-m-top_small slds-m-horizontal_auto slds-p-around_small" style="max-width: 440px; text-align: left; background: #ffffff; border-radius: 8px; border: 1px solid #d8dde6;">
+                                <div class="slds-form-element">
+                                    <label class="slds-form-element__label slds-text-title_bold" for="slack-email-input">
+                                        Alternate Corporate Slack Email (Optional)
+                                    </label>
+                                    <div class="slds-form-element__control">
+                                        <lightning-input
+                                            id="slack-email-input"
+                                            type="email"
+                                            variant="label-hidden"
+                                            placeholder="Leave blank to use {userEmail}"
+                                            value={slackAuthEmail}
+                                            onchange={handleSlackAuthEmailChange}
+                                            onkeyup={handleSlackAuthKeyUp}>
+                                        </lightning-input>
+                                    </div>
+                                    <div class="slds-form-element__help slds-text-color_weak slds-m-top_xx-small">
+                                        Defaults to your Salesforce user email ({userEmail}). Enter only if your Slack email is different.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Workspace Member Selector (Enterprise fallback for non-matching emails / sandbox orgs) -->
+                        <template if:true={hasWorkspaceMembers}>
+                            <div class="slds-box slds-m-top_medium slds-theme_shade slds-p-around_medium">
+                                <div class="slds-text-title_bold slds-m-bottom_xx-small">
+                                    🏢 Enterprise Workspace Member Selection
+                                </div>
+                                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                                    Select your verified Slack identity in workspace <strong>AI Studio Agent with Slack</strong>:
+                                </p>
+                                <div class="slds-grid slds-grid_vertical-align-center">
+                                    <div class="slds-col slds-grow">
+                                        <lightning-combobox
+                                            variant="label-hidden"
+                                            placeholder="Choose your Slack identity..."
+                                            value={selectedWorkspaceUserId}
+                                            options={workspaceMemberOptions}
+                                            onchange={handleWorkspaceMemberChange}>
+                                        </lightning-combobox>
+                                    </div>
+                                    <div class="slds-col slds-no-flex slds-m-left_x-small">
+                                        <lightning-button
+                                            label="Connect Profile"
+                                            variant="brand"
+                                            icon-name="utility:link"
+                                            onclick={handleLinkSelectedMember}
+                                            disabled={isAuthenticatingSlack}>
+                                        </lightning-button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </template>
+                </div>
+
+                <footer class="slds-modal__footer slds-grid slds-grid_align-spread">
+                    <div>
+                        <template if:true={isSlackConnected}>
+                            <lightning-button
+                                label="Disconnect Slack"
+                                variant="destructive-text"
+                                icon-name="utility:clear"
+                                onclick={handleDisconnectSlack}
+                                disabled={isDisconnectDisabled}>
+                            </lightning-button>
+                        </template>
+                    </div>
+                    <div>
+                        <template if:true={isSlackConnected}>
+                            <lightning-button
+                                label="Re-Sync Identity"
+                                variant="neutral"
+                                icon-name="utility:refresh"
+                                class="slds-m-right_x-small"
+                                onclick={handleOfficialSlackLogin}
+                                disabled={isAuthenticatingSlack}>
+                            </lightning-button>
+                        </template>
+                        <lightning-button
+                            label="Done"
+                            variant="brand"
+                            onclick={handleCloseSettings}>
+                        </lightning-button>
+                    </div>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

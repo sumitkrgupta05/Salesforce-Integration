@@ -1,0 +1,191 @@
+<template>
+    <article class="copilot-container slds-card slds-card_boundary">
+        <!-- 1. Copilot Header (Fixed Top) -->
+        <div class="copilot-header slds-p-horizontal_small slds-p-vertical_x-small slds-grid slds-grid_vertical-align-center slds-border_bottom">
+            <div class="slds-media slds-media_center slds-has-flexi-truncate">
+                <div class="slds-media__figure">
+                    <lightning-icon icon-name="standard:bot" size="small"></lightning-icon>
+                </div>
+                <div class="slds-media__body">
+                    <h2 class="slds-card__header-title">
+                        <span class="slds-text-heading_small slds-truncate header-title">Gemini Copilot</span>
+                    </h2>
+                </div>
+            </div>
+            <div class="slds-no-flex slds-grid slds-grid_vertical-align-center">
+                <span class="slds-badge mcp-badge slds-m-right_x-small">LearnDC MCP</span>
+                <lightning-button-icon icon-name="utility:refresh" variant="border-filled" size="small" alternative-text="Reset Session" title="Reset Session" onclick={handleResetSession}></lightning-button-icon>
+            </div>
+        </div>
+
+        <!-- 2. Account Context Banner (Fixed Top) -->
+        <div class="account-context-bar slds-p-horizontal_small slds-p-vertical_xx-small slds-theme_shade slds-border_bottom slds-grid slds-grid_vertical-align-center slds-wrap">
+            <span class="slds-text-title_caps slds-text-color_weak slds-m-right_xx-small">Context:</span>
+            <span class="slds-text-title_bold context-account-name slds-truncate">{accountDisplayName}</span>
+            <template if:true={csmEmail}>
+                <span class="slds-m-left_x-small slds-text-color_weak">• CSM:</span>
+                <span class="slds-text-color_default slds-m-left_xx-small slds-truncate">{csmEmail}</span>
+            </template>
+        </div>
+
+        <!-- 3. Quick Action Prompt Chips (Fixed Top) -->
+        <div class="quick-chips-container slds-p-horizontal_small slds-p-vertical_x-small slds-border_bottom">
+            <button class="slds-button slds-button_neutral chip-pill" onclick={handleQuickEmailSummary} disabled={isThinking}>
+                ⚡ Summarize Emails
+            </button>
+            <button class="slds-button slds-button_neutral chip-pill" onclick={handleQuickAccountInfo} disabled={isThinking}>
+                ⚡ Account & CSM
+            </button>
+            <button class="slds-button slds-button_neutral chip-pill" onclick={handleQuickScheduleMeeting} disabled={isThinking}>
+                ⚡ Schedule 30m Meeting
+            </button>
+        </div>
+
+        <!-- 4. Scrollable Chat Feed (Dedicated Scroll Container) -->
+        <div class="chat-feed slds-p-around_small" lwc:ref="chatFeed">
+            <template for:each={messages} for:item="msg">
+                <div key={msg.id} class={msg.containerClass} data-id={msg.id}>
+                    <!-- Avatar for Bot -->
+                    <template if:true={msg.isBot}>
+                        <div class="avatar bot-avatar">
+                            <lightning-icon icon-name="standard:bot" size="x-small"></lightning-icon>
+                        </div>
+                    </template>
+
+                    <!-- Message Bubble -->
+                    <div class={msg.bubbleClass}>
+                        <!-- Text Body -->
+                        <div class="message-text">
+                            <lightning-formatted-rich-text value={msg.formattedText}></lightning-formatted-rich-text>
+                        </div>
+
+                        <!-- Rich Account Card -->
+                        <template if:true={msg.isAccountCard}>
+                            <div class="rich-card slds-box slds-box_x-small slds-m-top_x-small slds-theme_default">
+                                <div class="slds-media slds-media_center slds-m-bottom_x-small">
+                                    <div class="slds-media__figure">
+                                        <lightning-icon icon-name="standard:account" size="small"></lightning-icon>
+                                    </div>
+                                    <div class="slds-media__body">
+                                        <div class="slds-text-heading_small slds-truncate">{msg.cardData.accountName}</div>
+                                        <div class="slds-text-body_small slds-text-color_weak">Industry: {msg.cardData.industry}</div>
+                                    </div>
+                                </div>
+                                <div class="slds-grid slds-wrap slds-gutters_x-small slds-text-body_small">
+                                    <div class="slds-col slds-size_1-of-1 slds-m-bottom_xx-small">
+                                        <strong>Assigned CSM:</strong> {msg.cardData.csmEmail}
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-m-bottom_xx-small">
+                                        <strong>Primary Contact:</strong> {msg.cardData.primaryContactName} ({msg.cardData.primaryContactEmail})
+                                    </div>
+                                    <template if:true={msg.cardData.contactSummary}>
+                                        <div class="slds-col slds-size_1-of-1 slds-text-color_weak slds-m-top_xx-small">
+                                            <strong>Key Contacts:</strong> {msg.cardData.contactSummary}
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- Rich Email Thread Summary Card -->
+                        <template if:true={msg.isThreadCard}>
+                            <div class="rich-card slds-box slds-box_x-small slds-m-top_x-small slds-theme_default">
+                                <div class="slds-media slds-media_center slds-m-bottom_x-small">
+                                    <div class="slds-media__figure">
+                                        <lightning-icon icon-name="standard:email" size="small"></lightning-icon>
+                                    </div>
+                                    <div class="slds-media__body">
+                                        <div class="slds-text-heading_small slds-truncate">Customer Email Summary</div>
+                                        <div class="slds-text-body_small slds-text-color_weak">Analyzed Messages: {msg.cardData.messageCount}</div>
+                                    </div>
+                                </div>
+                                <div class="slds-text-body_small slds-m-bottom_x-small">
+                                    <strong>Executive Summary:</strong>
+                                    <p class="slds-m-top_xx-small">{msg.cardData.executiveSummary}</p>
+                                </div>
+                                <template if:true={msg.cardData.keyPoints}>
+                                    <div class="slds-text-body_small slds-m-bottom_x-small">
+                                        <strong>Key Discussion Points:</strong>
+                                        <lightning-formatted-rich-text value={msg.cardData.keyPoints}></lightning-formatted-rich-text>
+                                    </div>
+                                </template>
+                                <template if:true={msg.cardData.actionItems}>
+                                    <div class="slds-text-body_small action-items-box slds-p-around_xx-small slds-theme_shade">
+                                        <strong>Action Items:</strong>
+                                        <lightning-formatted-rich-text value={msg.cardData.actionItems}></lightning-formatted-rich-text>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- Rich Meeting Scheduled Card with Google Meet Button -->
+                        <template if:true={msg.isMeetingCard}>
+                            <div class="rich-card meeting-card slds-box slds-box_x-small slds-m-top_x-small slds-theme_default">
+                                <div class="slds-media slds-media_center slds-m-bottom_x-small">
+                                    <div class="slds-media__figure">
+                                        <lightning-icon icon-name="standard:event" size="small"></lightning-icon>
+                                    </div>
+                                    <div class="slds-media__body">
+                                        <div class="slds-text-heading_small slds-truncate">{msg.cardData.subject}</div>
+                                        <div class="slds-text-body_small slds-text-color_weak">Time: {msg.cardData.startDateTimeFormatted}</div>
+                                    </div>
+                                </div>
+                                <template if:true={msg.cardData.googleMeetLink}>
+                                    <div class="slds-m-top_small">
+                                        <a href={msg.cardData.googleMeetLink} target="_blank" rel="noopener noreferrer" class="slds-button slds-button_brand meet-btn">
+                                            <lightning-icon icon-name="utility:video" size="x-small" variant="inverse" class="slds-m-right_xx-small"></lightning-icon>
+                                            Join Google Meet
+                                        </a>
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <!-- Timestamp -->
+                        <div class="timestamp">{msg.timeStr}</div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Thinking / Typing Indicator -->
+            <template if:true={isThinking}>
+                <div class="message-row bot-row slds-m-bottom_small" data-id="thinking-row">
+                    <div class="avatar bot-avatar">
+                        <lightning-icon icon-name="standard:bot" size="x-small"></lightning-icon>
+                    </div>
+                    <div class="bubble bot-bubble thinking-bubble">
+                        <div class="typing-dots">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <span class="thinking-text slds-m-left_x-small">Consulting LearnDC Agent MCP Server...</span>
+                    </div>
+                </div>
+            </template>
+        </div>
+
+        <!-- 5. Chat Input Bar (Fixed Bottom) -->
+        <div class="chat-input-bar slds-p-horizontal_small slds-p-vertical_x-small slds-border_top">
+            <div class="slds-grid slds-grid_vertical-align-center">
+                <div class="slds-col slds-grow">
+                    <input
+                        type="text"
+                        class="slds-input chat-input-field"
+                        placeholder="Ask Copilot about this account..."
+                        value={userInput}
+                        oninput={handleInputChange}
+                        onkeydown={handleKeyDown}
+                        disabled={isThinking}>
+                </div>
+                <div class="slds-col slds-no-flex slds-m-left_xx-small">
+                    <button
+                        class="slds-button slds-button_brand send-btn"
+                        disabled={isSendDisabled}
+                        onclick={handleSendMessage}
+                        title="Send Message">
+                        <lightning-icon icon-name="utility:send" size="x-small" variant="inverse"></lightning-icon>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </article>
+</template>

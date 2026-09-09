@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>CSM_Email__c</fullName>
+    <description>Email address of the Customer Success Manager (CSM) responsible for this Account. Used for sending and receiving emails with Account contacts without external domain dependencies.</description>
+    <externalId>false</externalId>
+    <label>CSM Email</label>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Email</type>
+    <unique>false</unique>
+</CustomField>

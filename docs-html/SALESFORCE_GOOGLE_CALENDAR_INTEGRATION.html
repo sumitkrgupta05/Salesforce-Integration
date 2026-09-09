@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Salesforce &amp; Google Calendar Real-Time Bidirectional Integration | Salesforce Enterprise Architecture</title>
+  <!-- Mermaid JS for Dynamic Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      securityLevel: 'loose',
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+      sequence: { useMaxWidth: true, showSequenceNumbers: true }
+    });
+  </script>
+  <style>
+    :root {
+      --sf-blue: #0176D3;
+      --sf-dark-blue: #0b5cab;
+      --sf-navy: #032d60;
+      --slack-aubergine: #4A154B;
+      --slack-green: #2EB67D;
+      --slack-yellow: #ECB22E;
+      --slack-red: #E01E5A;
+      --slack-blue: #36C5F0;
+      --gcp-blue: #4285F4;
+      --snowflake-blue: #29B5E8;
+      --gmail-red: #EA4335;
+      --cal-blue: #1A73E8;
+      --bg-light: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --border-color: #e2e8f0;
+      --code-bg: #1e1e24;
+      --radius-lg: 12px;
+      --radius-md: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-light);
+      color: var(--text-main);
+      line-height: 1.68;
+      padding-bottom: 80px;
+    }
+
+    /* Scroll progress indicator */
+    #progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--sf-blue), var(--slack-green), var(--slack-blue));
+      width: 0%;
+      z-index: 999;
+      transition: width 0.1s ease;
+    }
+
+    /* Hero Header */
+    header.hero {
+      background: linear-gradient(135deg, var(--sf-navy) 0%, #0f172a 45%, var(--slack-aubergine) 100%);
+      color: white;
+      padding: 48px 24px;
+      text-align: center;
+      border-bottom: 4px solid var(--slack-green);
+      position: relative;
+    }
+
+    header.hero h1 {
+      font-size: 2.3rem;
+      margin-bottom: 12px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    header.hero p {
+      font-size: 1.1rem;
+      color: #cbd5e1;
+      max-width: 850px;
+      margin: 0 auto 20px auto;
+    }
+
+    .badge-bar {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f1f5f9;
+    }
+
+    .badge.success {
+      background: rgba(46, 182, 125, 0.25);
+      border-color: #2EB67D;
+      color: #86efac;
+    }
+
+    /* Layout Container */
+    .container {
+      max-width: 1220px;
+      margin: 28px auto;
+      padding: 0 20px;
+    }
+
+    /* Sticky Navigation Bar with Search */
+    .nav-wrapper {
+      position: sticky;
+      top: 12px;
+      z-index: 100;
+      margin-bottom: 28px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      padding: 6px;
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      scrollbar-width: thin;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .nav-tab {
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      color: var(--text-sub);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .nav-tab:hover {
+      background: #f1f5f9;
+      color: var(--sf-blue);
+    }
+
+    .nav-tab.active {
+      background: var(--sf-blue);
+      color: #ffffff;
+    }
+
+    /* Section Cards */
+    .section-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    h2.section-title {
+      font-size: 1.55rem;
+      margin-bottom: 20px;
+      color: var(--sf-navy);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 12px;
+    }
+
+    .title-badge {
+      font-size: 0.72rem;
+      font-weight: 800;
+      background: #e0f2fe;
+      color: var(--sf-blue);
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    h3.sub-title {
+      font-size: 1.25rem;
+      margin: 24px 0 12px 0;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h4.sub-sub-title {
+      font-size: 1.05rem;
+      margin: 18px 0 10px 0;
+      color: #1e293b;
+    }
+
+    p {
+      color: #334155;
+      font-size: 0.98rem;
+      margin-bottom: 14px;
+    }
+
+    /* Lists */
+    ul.styled-list, ol.styled-ordered-list {
+      padding-left: 24px;
+      margin-bottom: 18px;
+    }
+
+    li {
+      color: #334155;
+      font-size: 0.96rem;
+      margin-bottom: 8px;
+    }
+
+    li.task-item {
+      list-style-type: none;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    li.task-item.checked {
+      color: #059669;
+      font-weight: 500;
+    }
+
+    .check-icon {
+      font-weight: bold;
+      color: #10b981;
+    }
+
+    /* Visual Illustration Card */
+    .visual-illustration-card {
+      background: #0f172a;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin: 24px 0 32px 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      border: 1px solid #334155;
+    }
+
+    .illustration-header {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .illustration-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: #0284c7;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .illustration-header h3 {
+      font-size: 1.2rem;
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    /* Diagram Box (Mermaid) */
+    .diagram-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin: 22px 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+
+    .diagram-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    /* Step Card */
+    .step-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 18px 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      border-left: 4px solid var(--sf-blue);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .step-badge {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #ffffff;
+      background: var(--sf-blue);
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .step-card h4 {
+      font-size: 1.15rem;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    /* Code Container & Syntax Styling */
+    .code-container {
+      background: var(--code-bg);
+      border-radius: var(--radius-md);
+      margin: 18px 0;
+      overflow: hidden;
+      border: 1px solid #334155;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #141418;
+      padding: 8px 16px;
+      border-bottom: 1px solid #2d2d35;
+    }
+
+    .lang-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+    }
+
+    .copy-btn {
+      background: #282832;
+      color: #cbd5e1;
+      border: 1px solid #444;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: var(--sf-blue);
+      color: #ffffff;
+      border-color: var(--sf-blue);
+    }
+
+    pre {
+      padding: 16px;
+      overflow-x: auto;
+      color: #f8f8f2;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    }
+
+    .inline-code {
+      background: #edf2f7;
+      color: #c026d3;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      border: 1px solid #e2e8f0;
+      font-weight: 600;
+    }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      text-align: left;
+      font-size: 0.94rem;
+    }
+
+    .styled-table th {
+      background: #f1f5f9;
+      color: var(--sf-navy);
+      font-weight: 700;
+      padding: 12px 16px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+
+    .styled-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+
+    .styled-table tr:hover {
+      background: #f8fafc;
+    }
+
+    /* Callout Boxes */
+    .callout-box {
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      margin: 20px 0;
+      border-left: 4px solid;
+    }
+
+    .callout-box.info {
+      background: #f0f9ff;
+      border-color: #0284c7;
+    }
+    .callout-box.info .callout-title { color: #0369a1; }
+
+    .callout-box.tip {
+      background: #fdf4ff;
+      border-color: #c084fc;
+    }
+    .callout-box.tip .callout-title { color: #7e22ce; }
+
+    .callout-box.warning {
+      background: #fffbeb;
+      border-color: #f59e0b;
+    }
+    .callout-box.warning .callout-title { color: #b45309; }
+
+    .callout-box.important {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+    .callout-box.important .callout-title { color: #1d4ed8; }
+
+    .callout-box.caution {
+      background: #fef2f2;
+      border-color: #ef4444;
+    }
+    .callout-box.caution .callout-title { color: #b91c1c; }
+
+    .callout-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .callout-body {
+      color: #334155;
+      font-size: 0.95rem;
+    }
+
+    hr.section-divider {
+      border: 0;
+      height: 1px;
+      background: #e2e8f0;
+      margin: 32px 0;
+    }
+
+    /* Image Container */
+    .doc-img-container {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .doc-img {
+      max-width: 100%;
+      border-radius: var(--radius-md);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border: 1px solid var(--border-color);
+    }
+    .img-caption {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    /* Back to top button */
+    .back-to-top {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--sf-blue);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 24px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(1, 118, 211, 0.4);
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      z-index: 99;
+    }
+
+    .back-to-top:hover {
+      background: var(--sf-dark-blue);
+      transform: translateY(-2px);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 32px 20px;
+      color: #64748b;
+      font-size: 0.88rem;
+      border-top: 1px solid var(--border-color);
+      background: #ffffff;
+      margin-top: 48px;
+    }
+
+    @media print {
+      .nav-wrapper, .back-to-top, .copy-btn, #progress-bar { display: none !important; }
+      .section-card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div id="progress-bar"></div>
+
+  <!-- Hero Header -->
+  <header class="hero">
+    <h1>Salesforce &amp; Google Calendar Real-Time Bidirectional Integration</h1>
+    <p>Enterprise Technical Documentation &amp; Operational Reference</p>
+    <div class="badge-bar">
+      <span class="badge success">Production Ready</span>
+      <span class="badge ">Salesforce Lightning</span>
+      <span class="badge ">Enterprise Architecture</span>
+      <span class="badge ">Complete Implementation</span>
+      <span class="badge ">Google Calendar v3</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Sticky Navigation Tabs -->
+    <div class="nav-wrapper">
+      <nav class="nav-tabs">
+        <a href="#sec-1-architecture-overview" class="nav-tab">Architecture Overview</a>
+        <a href="#sec-2-step-by-step-data-flow-sequence-workflows-with-exact-file-names" class="nav-tab">Step-by-Step Data Flow &amp; Sequence Workflows (With Exact File Names)</a>
+        <a href="#sec-3-key-architecture-principles" class="nav-tab">Key Architecture Principles</a>
+        <a href="#sec-4-technologies-tools-metadata-used" class="nav-tab">Technologies, Tools &amp; Metadata Used</a>
+        <a href="#sec-5-implementation-steps-accomplished" class="nav-tab">Implementation Steps Accomplished</a>
+        <a href="#sec-6-directory-file-structure" class="nav-tab">Directory &amp; File Structure</a>
+        <a href="#sec-7-how-to-use-on-the-account-record-page" class="nav-tab">How to Use on the Account Record Page</a>
+      </nav>
+    </div>
+
+    <!-- Document Content Sections -->
+    <p>A complete, enterprise-grade technical guide and documentation for the bidirectional real-time integration between Salesforce and Google Calendar, supporting bulk users via Google Workspace Domain-Wide Delegation and featuring an interactive Lightning Web Component (LWC) on Account records.</p>
+<hr class="section-divider"/>
+<section class="section-card" id="sec-1-architecture-overview">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 1. Architecture Overview</h2>
+
+    <div class="visual-illustration-card">
+      <div class="illustration-header">
+        <span class="illustration-tag">Bidirectional Calendar Synchronization</span>
+        <h3>Interactive LWC Meeting Scheduler, JWT Bearer Auth & Push Webhook Engine</h3>
+      </div>
+      <svg viewBox="0 0 960 360" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+        <!-- Calendar LWC Mockup -->
+        <g transform="translate(40, 30)">
+          <rect x="0" y="0" width="460" height="300" rx="10" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+          <rect x="0" y="0" width="460" height="40" rx="10" fill="#1e3a8a"/>
+          <text x="20" y="25" fill="#ffffff" font-size="14" font-weight="bold">📅 accountGoogleCalendar • Schedule Meeting</text>
+
+          <!-- Input Fields -->
+          <text x="20" y="65" fill="#93c5fd" font-size="11" font-weight="bold">MEETING TITLE</text>
+          <rect x="20" y="72" width="420" height="30" rx="4" fill="#0f172a" stroke="#475569"/>
+          <text x="30" y="92" fill="#ffffff" font-size="12">Quarterly Business Review - Edge Comms</text>
+
+          <!-- Date and Time Row -->
+          <text x="20" y="125" fill="#93c5fd" font-size="11" font-weight="bold">START DATE & TIME</text>
+          <rect x="20" y="132" width="200" height="30" rx="4" fill="#0f172a" stroke="#475569"/>
+          <text x="30" y="152" fill="#ffffff" font-size="12">2026-09-15 10:00 AM</text>
+
+          <text x="240" y="125" fill="#93c5fd" font-size="11" font-weight="bold">END DATE & TIME</text>
+          <rect x="240" y="132" width="200" height="30" rx="4" fill="#0f172a" stroke="#475569"/>
+          <text x="250" y="152" fill="#ffffff" font-size="12">2026-09-15 11:00 AM</text>
+
+          <!-- Google Meet Auto-Generator Switch -->
+          <rect x="20" y="180" width="420" height="42" rx="6" fill="#0f172a" stroke="#059669"/>
+          <circle cx="42" cy="201" r="12" fill="#00897B"/>
+          <text x="38" y="206" fill="#ffffff" font-size="12">📹</text>
+          <text x="65" y="198" fill="#ffffff" font-size="12" font-weight="bold">Auto-Generate Google Meet Link</text>
+          <text x="65" y="213" fill="#a7f3d0" font-size="10">https://meet.google.com/abc-defg-hij (Auto-provisioned)</text>
+
+          <!-- Submit Button -->
+          <rect x="20" y="240" width="420" height="38" rx="6" fill="#1A73E8"/>
+          <text x="230" y="264" fill="#ffffff" font-size="13" font-weight="bold" text-anchor="middle">Schedule Meeting via Google Calendar v3</text>
+        </g>
+
+        <!-- Push Sync Architecture Diagram (Right) -->
+        <g transform="translate(530, 30)">
+          <rect x="0" y="0" width="390" height="300" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+          <rect x="0" y="0" width="390" height="40" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+          <text x="20" y="25" fill="#0f172a" font-size="14" font-weight="bold">🔄 Bidirectional Real-Time Sync Flow</text>
+
+          <!-- Flow Step 1 -->
+          <rect x="20" y="55" width="350" height="45" rx="6" fill="#eff6ff" stroke="#93c5fd"/>
+          <text x="32" y="73" fill="#1e40af" font-size="11" font-weight="bold">1. Outbound JWT Bearer Authentication</text>
+          <text x="32" y="88" fill="#3b82f6" font-size="10">Domain-Wide Delegation with RSA-SHA256 Signed Token</text>
+
+          <!-- Flow Step 2 -->
+          <rect x="20" y="112" width="350" height="45" rx="6" fill="#f0fdf4" stroke="#86efac"/>
+          <text x="32" y="130" fill="#166534" font-size="11" font-weight="bold">2. Google Push Notification Webhook</text>
+          <text x="32" y="145" fill="#15803d" font-size="10">Google pushes sync ping to Salesforce REST Webhook Site</text>
+
+          <!-- Flow Step 3 -->
+          <rect x="20" y="169" width="350" height="45" rx="6" fill="#fdf4ff" stroke="#f0abfc"/>
+          <text x="32" y="187" fill="#86198f" font-size="11" font-weight="bold">3. Delta-Sync via syncToken</text>
+          <text x="32" y="202" fill="#a21caf" font-size="10">Fetches only changed events, preventing infinite loops</text>
+
+          <!-- Flow Step 4 -->
+          <rect x="20" y="226" width="350" height="45" rx="6" fill="#f8fafc" stroke="#cbd5e1"/>
+          <text x="32" y="244" fill="#0f172a" font-size="11" font-weight="bold">4. Event Isolation (Gmail vs Calendar)</text>
+          <text x="32" y="259" fill="#475569" font-size="10">Strict Type separation so email logs never pollute calendar</text>
+        </g>
+      </svg>
+    </div>
+  
+<p>This integration enables Salesforce users to schedule, reschedule (time-shift), and cancel Google Calendar meetings directly from Salesforce Account record pages with automatic Google Meet video call links. Updates flow bidirectionally in real time without infinite sync loops.</p>
+<h3 class="sub-title">Architecture Diagram</h3>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+graph TD
+    subgraph "Salesforce Platform (learn_dc)"
+        LWC["Account LWC (accountGoogleCalendar)"]
+        Controller["AccountCalendarController.cls"]
+        AuthSvc["GoogleAuthService.cls (JWT Bearer RSA-SHA256)"]
+        CalSvc["GoogleCalendarService.cls (Callout Engine)"]
+        RestSite["Salesforce Site Webhook (Apex REST)"]
+        QueueableJob["GoogleCalendarQueueable.cls"]
+        PlatformEvent["Platform Event (Calendar_Sync_Notification__e)"]
+        EventObj["Standard Event Object (with Custom Fields)"]
+    end
+
+    subgraph "Google Cloud & Workspace"
+        GoogleOAuth["OAuth 2.0 Token Endpoint (JWT)"]
+        GoogleCalAPI["Google Calendar API v3"]
+        GooglePush["Google Push Notifications Engine"]
+    end
+
+    %% Outbound Flow (Salesforce to Google)
+    LWC -->|"1. User schedules / shifts / cancels"| Controller
+    Controller -->|"2. Resolve User & Request Token"| AuthSvc
+    AuthSvc -->|"3. Signed JWT Bearer Exchange"| GoogleOAuth
+    Controller -->|"4. REST API (POST / PATCH / DELETE)"| CalSvc
+    CalSvc -->|"5. HTTP Callout"| GoogleCalAPI
+    Controller -->|"6. Dual-write / Update record"| EventObj
+
+    %% Inbound Flow (Google to Salesforce)
+    GoogleCalAPI -->|"7. External update on Calendar"| GooglePush
+    GooglePush -->|"8. Webhook Notification Ping"| RestSite
+    RestSite -->|"9. Enqueue sync task"| QueueableJob
+    QueueableJob -->|"10. Delta fetch (syncToken)"| GoogleCalAPI
+    QueueableJob -->|"11. Upsert / Delete Event"| EventObj
+    QueueableJob -->|"12. Publish Platform Event"| PlatformEvent
+    PlatformEvent -->|"13. empApi Live UI Refresh"| LWC
+              </div>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-2-step-by-step-data-flow-sequence-workflows-with-exact-file-names">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 2. Step-by-Step Data Flow & Sequence Workflows (With Exact File Names)</h2>
+<p>This section provides the exact step-by-step lifecycle of every operation with file names and sequence diagrams, designed to make it easy to explain to team members, architects, and stakeholders.</p>
+<hr class="section-divider"/>
+<h3 class="sub-title">Workflow A: Outbound Flow — Meeting Scheduled from Salesforce (LWC ➔ Google Calendar)</h3>
+<p>When a sales rep schedules a meeting from the Account page LWC, here is the exact sequence of events:</p>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor User as Sales Rep (Browser)
+    participant LWC as accountGoogleCalendar.js<br/>(Lightning Web Component)
+    participant Ctrl as AccountCalendarController.cls<br/>(Apex Controller)
+    participant Auth as GoogleAuthService.cls<br/>(JWT Token Service)
+    participant Meta as Google_Calendar_Setting__mdt<br/>(Custom Metadata)
+    participant GOauth as Google OAuth 2.0<br/>(https://oauth2.googleapis.com/token)
+    participant CalSvc as GoogleCalendarService.cls<br/>(Callout Engine)
+    participant GCal as Google Calendar API v3<br/>(https://www.googleapis.com)
+    participant EvtObj as Event (Activity Object)<br/>(Salesforce Database)
+
+    User->>LWC: Opens Schedule Modal, selects Contact, sets times, toggles Google Meet & clicks "Schedule & Sync"
+    LWC->>Ctrl: Calls createMeeting(accountId, subject, description, startDt, endDt, attendees, addGoogleMeet, contactId)
+    Ctrl->>Auth: Calls resolveUserEmail() & getAccessToken(userEmail)
+    Auth->>Meta: Reads Service_Account_Email__c, Private_Key__c, Workspace_User_Email__c
+    Auth->>Auth: Constructs JWT Header & Claims (iss, sub: sumit@skg5.com, scope, aud, exp)
+    Auth->>Auth: Cryptographically signs JWT via Crypto.sign('RSA-SHA256', stringToSign, privateKeyBlob)
+    Auth->>GOauth: HTTP POST /token (grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer)
+    GOauth-->>Auth: Returns 200 OK JSON with Bearer access_token (cached in memory)
+    Ctrl->>CalSvc: Calls createEvent(userEmail, subject, description, startDt, endDt, attendees, addGoogleMeet)
+    CalSvc->>GCal: HTTP POST /calendars/primary/events?conferenceDataVersion=1 (Authorization: Bearer <token>)
+    GCal-->>CalSvc: Returns 201 Created (id: "g03jq...", hangoutLink: "https://meet.google.com/...", etag, start/end)
+    CalSvc-->>Ctrl: Returns GoogleEventResult DTO
+    Ctrl->>EvtObj: Inserts Event record (WhatId=Account, WhoId=Contact, Google_Event_Id__c, Google_Meet_Link__c, Last_Sync_Source__c='SALESFORCE', Sync_Status__c='Synced')
+    Ctrl-->>LWC: Returns EventDTO with created meeting details
+    LWC-->>User: Closes modal, renders new meeting in table, shows green Toast & active "Join Meet" button
+              </div>
+            </div>
+          <h4 class="sub-sub-title">Step-by-Step Breakdown (Outbound Scheduling):</h4>
+<ol class="styled-ordered-list">
+<li><strong>User Interaction (<code class="inline-code">accountGoogleCalendar.html</code> / <code class="inline-code">accountGoogleCalendar.js</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>The user clicks <strong>"Schedule Meeting"</strong> on an Account record page.</li>
+<li>Fills in Meeting Subject, selects a Contact from the Account, enters any extra attendee emails, picks Start/End times, and leaves "Generate Google Meet" enabled.</li>
+<li>Clicks <strong>"Schedule & Sync"</strong>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Controller Invocation (<code class="inline-code">AccountCalendarController.cls</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Method <code class="inline-code">createMeeting(...)</code> receives the form payload.</li>
+<li>Validates required inputs (Subject, StartDateTime, EndDateTime).</li>
+<li>Resolves the Google Workspace user email to impersonate via <code class="inline-code">GoogleAuthService.resolveUserEmail(null)</code> (resolves to <code class="inline-code">sumit@skg5.com</code>).</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>JWT Token Generation & Exchange (<code class="inline-code">GoogleAuthService.cls</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Checks the in-memory token cache for <code class="inline-code">sumit@skg5.com</code>. If expired or not present:</li>
+<li>Reads credentials from <code class="inline-code">Google_Calendar_Setting__mdt.Default_Setting</code> (<code class="inline-code">Service_Account_Email__c</code>, <code class="inline-code">Private_Key__c</code>, <code class="inline-code">Token_Endpoint__c</code>).</li>
+<li>Builds the JWT assertion signed with the PKCS#8 RSA private key using <code class="inline-code">Crypto.sign(&#039;RSA-SHA256&#039;, ...)</code>.</li>
+<li>Sends an HTTP POST to <code class="inline-code">https://oauth2.googleapis.com/token</code>.</li>
+<li>Google verifies Domain-Wide Delegation and returns a Bearer access token valid for 1 hour.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Google Calendar API Callout (<code class="inline-code">GoogleCalendarService.cls</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Method <code class="inline-code">createEvent(...)</code> prepares the Google Calendar v3 JSON payload, including attendees and <code class="inline-code">conferenceData</code> request for Google Meet.</li>
+<li>Sends HTTP POST to <code class="inline-code">https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1</code>.</li>
+<li>Google provisions the event, invites all attendees via email, generates a unique Google Meet video link (<code class="inline-code">hangoutLink</code>), and returns HTTP 201 Created.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Database Persistence (<code class="inline-code">AccountCalendarController.cls</code> ➔ <code class="inline-code">Event</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Creates standard Salesforce <code class="inline-code">Event</code> record:</li>
+<li><code class="inline-code">WhatId</code> = Account Id</li>
+<li><code class="inline-code">WhoId</code> = Contact Id</li>
+<li><code class="inline-code">Google_Event_Id__c</code> = Google Event ID</li>
+<li><code class="inline-code">Google_Meet_Link__c</code> = Google Meet URL</li>
+<li><code class="inline-code">Google_ETag__c</code> = Concurrency version tag</li>
+<li><code class="inline-code">Last_Sync_Source__c</code> = <code class="inline-code">&#039;SALESFORCE&#039;</code> (prevents echo loops)</li>
+<li><code class="inline-code">Sync_Status__c</code> = <code class="inline-code">&#039;Synced&#039;</code></li>
+<li>Executes DML <code class="inline-code">insert newEvent;</code>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Reactive UI Update (<code class="inline-code">accountGoogleCalendar.js</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>The controller returns the new <code class="inline-code">EventDTO</code>. The LWC closes the modal, refreshes the meeting list, and displays a success toast notification.</li>
+</ul>
+<hr class="section-divider"/>
+<h3 class="sub-title">Workflow B: Time Shift / Reschedule Flow (Salesforce ➔ Google Calendar)</h3>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor User as Sales Rep (Browser)
+    participant LWC as accountGoogleCalendar.js
+    participant Ctrl as AccountCalendarController.cls
+    participant CalSvc as GoogleCalendarService.cls
+    participant GCal as Google Calendar API v3
+    participant EvtObj as Event (Salesforce Database)
+
+    User->>LWC: Clicks Clock icon on meeting row, selects new Start/End times, clicks "Confirm Reschedule"
+    LWC->>Ctrl: Calls rescheduleMeeting(eventId, newStartDateTime, newEndDateTime)
+    Ctrl->>EvtObj: Queries Event (retrieves Google_Event_Id__c)
+    Ctrl->>CalSvc: Calls patchEventTimes(userEmail, googleEventId, newStart, newEnd)
+    CalSvc->>GCal: HTTP PATCH /calendars/primary/events/{id} with new start/end ISO strings
+    GCal-->>CalSvc: Returns 200 OK with updated ETag
+    CalSvc-->>Ctrl: Returns updated GoogleEventResult
+    Ctrl->>EvtObj: Updates Event (StartDateTime, EndDateTime, Google_ETag__c, Last_Sync_Source__c='SALESFORCE')
+    Ctrl-->>LWC: Returns updated EventDTO
+    LWC-->>User: Closes modal, updates date/time in table & shows Toast notification
+              </div>
+            </div>
+          <h4 class="sub-sub-title">Step-by-Step Breakdown (Reschedule):</h4>
+<ol class="styled-ordered-list">
+<li><strong>User Action (<code class="inline-code">accountGoogleCalendar.js</code>)</strong>: User clicks the clock icon on any meeting row and selects new start/end times.</li>
+<li><strong>Controller (<code class="inline-code">AccountCalendarController.cls</code>)</strong>: Method <code class="inline-code">rescheduleMeeting(eventId, newStart, newEnd)</code> queries the Event record to get <code class="inline-code">Google_Event_Id__c</code>.</li>
+<li><strong>Callout (<code class="inline-code">GoogleCalendarService.cls</code>)</strong>: Sends <code class="inline-code">PATCH /calendars/primary/events/{id}</code> with the new ISO-8601 datetimes. Google moves the meeting and notifies all attendees.</li>
+<li><strong>Update (<code class="inline-code">Event</code>)</strong>: Salesforce updates the <code class="inline-code">StartDateTime</code>, <code class="inline-code">EndDateTime</code>, <code class="inline-code">Google_ETag__c</code>, and sets <code class="inline-code">Last_Sync_Source__c = &#039;SALESFORCE&#039;</code>.</li>
+<li><strong>UI Refresh</strong>: The LWC table updates instantly.</li>
+</ol>
+<hr class="section-divider"/>
+<h3 class="sub-title">Workflow C: Cancellation / Deletion Flow (Salesforce ➔ Google Calendar)</h3>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor User as Sales Rep (Browser)
+    participant LWC as accountGoogleCalendar.js
+    participant Ctrl as AccountCalendarController.cls
+    participant CalSvc as GoogleCalendarService.cls
+    participant GCal as Google Calendar API v3
+    participant EvtObj as Event (Salesforce Database)
+
+    User->>LWC: Clicks Trash icon on meeting row & confirms "Yes, Cancel Meeting"
+    LWC->>Ctrl: Calls cancelMeeting(eventId)
+    Ctrl->>EvtObj: Queries Event (retrieves Google_Event_Id__c)
+    Ctrl->>CalSvc: Calls deleteEvent(userEmail, googleEventId)
+    CalSvc->>GCal: HTTP DELETE /calendars/primary/events/{id}
+    GCal-->>CalSvc: Returns 204 No Content (or 410/404)
+    CalSvc-->>Ctrl: Returns true
+    Ctrl->>EvtObj: Deletes Salesforce Event record (DML delete)
+    Ctrl-->>LWC: Returns true
+    LWC-->>User: Closes modal, removes row from table & shows cancellation Toast
+              </div>
+            </div>
+          <h4 class="sub-sub-title">Step-by-Step Breakdown (Cancel):</h4>
+<ol class="styled-ordered-list">
+<li><strong>User Confirmation (<code class="inline-code">accountGoogleCalendar.js</code>)</strong>: User clicks the trash icon and confirms cancellation in the modal prompt.</li>
+<li><strong>Controller (<code class="inline-code">AccountCalendarController.cls</code>)</strong>: Method <code class="inline-code">cancelMeeting(eventId)</code> retrieves the Google Event ID.</li>
+<li><strong>Callout (<code class="inline-code">GoogleCalendarService.cls</code>)</strong>: Sends <code class="inline-code">DELETE /calendars/primary/events/{id}</code>. Google removes the event and sends cancellation notices to attendees.</li>
+<li><strong>Database Cleanup (<code class="inline-code">Event</code>)</strong>: Salesforce executes <code class="inline-code">delete ev;</code> removing the record from Salesforce.</li>
+<li><strong>UI Update</strong>: The meeting row is removed from the LWC table.</li>
+</ol>
+<hr class="section-divider"/>
+<h3 class="sub-title">Workflow D: Inbound Flow — External Changes on Google Calendar (Google ➔ Salesforce)</h3>
+<p>When a meeting is scheduled, rescheduled, or cancelled directly in Google Calendar (e.g., via the Google Calendar web app, Google Meet app, or invitee acceptance), here is how Salesforce updates automatically in real time:</p>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Attendee as Invitee / Google Calendar User
+    participant GCal as Google Calendar App / API
+    participant GPush as Google Push Engine
+    participant Webhook as GoogleCalendarWebhookRestResource.cls<br/>(Salesforce Apex REST)
+    participant Queue as GoogleCalendarQueueable.cls<br/>(Async Queueable Job)
+    participant CalSvc as GoogleCalendarService.cls<br/>(Callout Client)
+    participant EvtObj as Event (Activity Object)<br/>(Salesforce Database)
+    participant PE as Calendar_Sync_Notification__e<br/>(Platform Event)
+    participant LWC as accountGoogleCalendar.js<br/>(empApi Streaming Subscriber)
+
+    Attendee->>GCal: Creates, edits time, or cancels event directly on Google Calendar
+    GCal->>GPush: Triggers push notification to registered watch channel
+    GPush->>Webhook: HTTP POST /services/apexrest/google/calendar/webhook (Headers: X-Goog-Resource-State: exists)
+    Webhook->>Queue: System.enqueueJob(new GoogleCalendarQueueable(userEmail, syncToken))
+    Webhook-->>GPush: Immediately returns HTTP 200 OK (acknowledges Google ping)
+    Note over Queue: Executes in background transaction
+    Queue->>CalSvc: Calls getEventsDelta(userEmail, syncToken)
+    CalSvc->>GCal: HTTP GET /calendars/primary/events?syncToken=...
+    GCal-->>CalSvc: Returns JSON list of modified items and cancellations (status: confirmed / cancelled)
+    Queue->>Queue: Matches attendee email with Contact.Email to find Account (WhatId) & Contact (WhoId)
+    Queue->>EvtObj: Upserts active Event / Deletes cancelled Event (Last_Sync_Source__c = 'GOOGLE')
+    Queue->>PE: EventBus.publish(new Calendar_Sync_Notification__e(AccountId__c, EventId__c, Action__c))
+    PE-->>LWC: empApi subscription triggers messageCallback on /event/Calendar_Sync_Notification__e
+    LWC->>LWC: Detects matching AccountId, re-fetches loadMeetings() & shows green Live Sync Toast
+              </div>
+            </div>
+          <h4 class="sub-sub-title">Step-by-Step Breakdown (Inbound Push Sync):</h4>
+<ol class="styled-ordered-list">
+<li><strong>Google Event Trigger (<code class="inline-code">Google Calendar</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>A user updates a meeting directly in Google Calendar.</li>
+<li>Google's push engine sends an HTTPS POST ping to the registered webhook endpoint on Salesforce.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>REST Webhook Receiver (<code class="inline-code">GoogleCalendarWebhookRestResource.cls</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Endpoint <code class="inline-code">@RestResource(urlMapping=&#039;/google/calendar/webhook/*&#039;)</code> receives the ping.</li>
+<li>If header <code class="inline-code">X-Goog-Resource-State == &#039;sync&#039;</code> (handshake), it immediately returns HTTP 200.</li>
+<li>If header <code class="inline-code">X-Goog-Resource-State == &#039;exists&#039;</code> (data change), it enqueues <code class="inline-code">GoogleCalendarQueueable</code> and immediately returns HTTP 200 to satisfy Google's webhook timeout requirement (< 5 seconds).</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Delta Processing Worker (<code class="inline-code">GoogleCalendarQueueable.cls</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Runs in an asynchronous background Apex transaction.</li>
+<li>Calls <code class="inline-code">GoogleCalendarService.getEventsDelta(...)</code> with the last stored <code class="inline-code">syncToken</code>.</li>
+<li>Google returns only the items that changed or were cancelled since the last sync.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Attendee & CRM Matching (<code class="inline-code">GoogleCalendarQueueable.cls</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Extracts attendee emails from the Google event.</li>
+<li>Queries <code class="inline-code">Contact WHERE Email IN :attendeeEmails</code> to resolve the related <code class="inline-code">AccountId</code> (<code class="inline-code">WhatId</code>) and <code class="inline-code">ContactId</code> (<code class="inline-code">WhoId</code>).</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Database Upsert & Loop Prevention (<code class="inline-code">Event</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>If event <code class="inline-code">status == &#039;cancelled&#039;</code>, it executes <code class="inline-code">delete</code> on the Salesforce <code class="inline-code">Event</code>.</li>
+<li>If event <code class="inline-code">status == &#039;confirmed&#039;</code>, it sets:</li>
+<li><code class="inline-code">Last_Sync_Source__c = &#039;GOOGLE&#039;</code> (<strong>Loop Prevention!</strong>)</li>
+<li><code class="inline-code">Sync_Status__c = &#039;Synced&#039;</code></li>
+<li><code class="inline-code">StartDateTime</code>, <code class="inline-code">EndDateTime</code>, <code class="inline-code">Subject</code>, <code class="inline-code">Description</code>, <code class="inline-code">Google_Meet_Link__c</code>.</li>
+<li>Executes <code class="inline-code">upsert eventsToUpsert Google_Event_Id__c;</code>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Platform Event Notification (<code class="inline-code">Calendar_Sync_Notification__e</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Publishes <code class="inline-code">Calendar_Sync_Notification__e</code> with the updated <code class="inline-code">AccountId__c</code> and <code class="inline-code">Action__c</code>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Instant UI Refresh (<code class="inline-code">accountGoogleCalendar.js</code> via <code class="inline-code">empApi</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>In the browser, the LWC's <code class="inline-code">subscribe()</code> handler receives the platform event over CometD/WebSocket.</li>
+<li>If the payload matches the current Account record page, it automatically calls <code class="inline-code">loadMeetings()</code>.</li>
+<li>The page updates instantly on the user's screen without requiring a manual page refresh.</li>
+</ul>
+<hr class="section-divider"/>
+<h3 class="sub-title">Workflow E: Loop Prevention Decision Matrix</h3>
+<p>To ensure Salesforce and Google Calendar never get trapped in an infinite ping-pong sync loop:</p>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Action Initiated By</th><th>Originating System</th><th><code class="inline-code">Last_Sync_Source__c</code> Stored</th><th>Outbound Callout Allowed?</th><th>Next System Action</th></tr></thead><tbody><tr><td><strong>Sales Rep in Salesforce LWC</strong></td><td>Salesforce</td><td><code class="inline-code">&#039;SALESFORCE&#039;</code></td><td><strong>Yes</strong> (calls Google API)</td><td>Google Calendar receives update; push ping is suppressed or recognized as current state.</td></tr><tr><td><strong>Google Calendar Push Webhook</strong></td><td>Google</td><td><code class="inline-code">&#039;GOOGLE&#039;</code></td><td><strong>No</strong> (callout bypassed)</td><td>Queueable updates Salesforce Event with <code class="inline-code">&#039;GOOGLE&#039;</code>. Apex triggers/services check this flag and <strong>bypass</strong> outbound callouts.</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-3-key-architecture-principles">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 3. Key Architecture Principles</h2>
+<ol class="styled-ordered-list">
+<li><strong>Bulk Enterprise User Support (Domain-Wide Delegation)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Instead of requiring every Salesforce user to authenticate individually via an OAuth pop-up, a single Google Cloud Service Account with <strong>Domain-Wide Delegation</strong> dynamically impersonates any user in the Google Workspace domain (<code class="inline-code">skg5.com</code>).</li>
+<li>Salesforce generates an RSA-SHA256 signed JWT assertion and exchanges it for a short-lived OAuth 2.0 Bearer access token on behalf of the user.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Bidirectional Real-Time Synchronization</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><strong>Outbound (SF ➔ Google)</strong>: Immediate synchronous callout during LWC user actions (Create, Reschedule, Cancel).</li>
+<li><strong>Inbound (Google ➔ SF)</strong>: Google push notification pings Salesforce's REST Webhook endpoint, triggering asynchronous delta sync (<code class="inline-code">GoogleCalendarQueueable</code>) via the Google Calendar v3 <code class="inline-code">syncToken</code> API.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Loop Prevention Mechanism</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>When Salesforce originates a change, <code class="inline-code">Event.Last_Sync_Source__c</code> is set to <code class="inline-code">&#039;SALESFORCE&#039;</code>.</li>
+<li>When Google Calendar originates a change, <code class="inline-code">Event.Last_Sync_Source__c</code> is set to <code class="inline-code">&#039;GOOGLE&#039;</code>.</li>
+<li>Triggers and services verify this flag to prevent echo loops.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Zero-Poll Reactive UI</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>The LWC uses <code class="inline-code">lightning/empApi</code> to subscribe to the streaming channel <code class="inline-code">/event/Calendar_Sync_Notification__e</code>.</li>
+<li>When inbound changes are processed by the queueable worker, the platform event automatically refreshes the Account calendar view without requiring a manual browser reload.</li>
+</ul>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-4-technologies-tools-metadata-used">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 4. Technologies, Tools & Metadata Used</h2>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Layer</th><th>Technology / Tool</th><th>Purpose</th></tr></thead><tbody><tr><td><strong>Salesforce CLI</strong></td><td><code class="inline-code">sf</code> (v2.x)</td><td>Metadata deployments, anonymous Apex execution, unit testing</td></tr><tr><td><strong>Salesforce Backend</strong></td><td>Apex (v62.0)</td><td>JWT bearer auth, REST API callouts, Queueable delta sync, Custom REST endpoint</td></tr><tr><td><strong>Salesforce Frontend</strong></td><td>Lightning Web Component (LWC)</td><td>Responsive SLDS UI, modal forms, <code class="inline-code">empApi</code> streaming subscription</td></tr><tr><td><strong>Security & Auth</strong></td><td>Google Service Account + JWT Bearer Flow</td><td>Enterprise server-to-server token exchange with RSA-SHA256 signing</td></tr><tr><td><strong>External APIs</strong></td><td>Google Calendar API v3, Google OAuth 2.0 Token API</td><td>Meeting CRUD, Meet conferencing, Delta sync</td></tr><tr><td><strong>Salesforce Schema</strong></td><td>Standard <code class="inline-code">Event</code>, Custom Metadata, Platform Events</td><td>Data persistence, external IDs, dynamic configuration, UI notifications</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-5-implementation-steps-accomplished">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 5. Implementation Steps Accomplished</h2>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 1</span>
+                <h4>Google Cloud & Google Workspace Setup</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li><strong>GCP Project & Service Account Creation</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Project ID: <code class="inline-code">exalted-justice-507211-v9</code></li>
+<li>Service Account Email: <code class="inline-code">sf-calendar-service@exalted-justice-507211-v9.iam.gserviceaccount.com</code></li>
+<li>Service Account Unique ID / Client ID: <code class="inline-code">105534434070602778731</code></li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Domain-Wide Delegation Configuration</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>In <code class="inline-code">admin.google.com</code> (Security > API Controls > Domain-wide Delegation), authorized Client ID <code class="inline-code">105534434070602778731</code> with the following OAuth scopes:</li>
+<li><code class="inline-code">https://www.googleapis.com/auth/calendar</code></li>
+<li><code class="inline-code">https://www.googleapis.com/auth/calendar.events</code></li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Key Generation</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Downloaded JSON key file containing the PKCS#8 private RSA key.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 2</span>
+                <h4>Salesforce Schema, Metadata & Security Configuration</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li><strong>Custom Fields on Standard <code class="inline-code">Event</code> (<code class="inline-code">Activity</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><code class="inline-code">Google_Event_Id__c</code> (Text 255, External ID, Unique): Stores the Google Calendar Event ID.</li>
+<li><code class="inline-code">Google_Meet_Link__c</code> (URL 255): Stores the generated Google Meet conference link.</li>
+<li><code class="inline-code">Google_ETag__c</code> (Text 255): Stores Google's ETag for concurrency checks.</li>
+<li><code class="inline-code">Last_Sync_Source__c</code> (Picklist: <code class="inline-code">SALESFORCE</code>, <code class="inline-code">GOOGLE</code>): Sync loop prevention flag.</li>
+<li><code class="inline-code">Sync_Status__c</code> (Picklist: <code class="inline-code">Synced</code>, <code class="inline-code">Pending</code>, <code class="inline-code">Failed</code>): Integration health tracking.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Custom Metadata Type (<code class="inline-code">Google_Calendar_Setting__mdt</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Record: <code class="inline-code">Google_Calendar_Setting.Default_Setting</code></li>
+<li>Fields:</li>
+<li><code class="inline-code">Service_Account_Email__c</code>: <code class="inline-code">sf-calendar-service@exalted-justice-507211-v9.iam.gserviceaccount.com</code></li>
+<li><code class="inline-code">Client_Id__c</code>: <code class="inline-code">105534434070602778731</code></li>
+<li><code class="inline-code">Token_Endpoint__c</code>: <code class="inline-code">https://oauth2.googleapis.com/token</code></li>
+<li><code class="inline-code">Workspace_User_Email__c</code>: <code class="inline-code">sumit@skg5.com</code></li>
+<li><code class="inline-code">Private_Key__c</code>: PKCS#8 PEM private key string</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Platform Event (<code class="inline-code">Calendar_Sync_Notification__e</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Fields: <code class="inline-code">AccountId__c</code> (Text 18), <code class="inline-code">EventId__c</code> (Text 18), <code class="inline-code">Action__c</code> (Text 50), <code class="inline-code">Timestamp__c</code> (DateTime).</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Remote Site Settings</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><code class="inline-code">Google_OAuth_Endpoint</code>: <code class="inline-code">https://oauth2.googleapis.com</code></li>
+<li><code class="inline-code">Google_Calendar_API</code>: <code class="inline-code">https://www.googleapis.com</code></li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Permission Set & Profile Field-Level Security (FLS)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Created <code class="inline-code">Google_Calendar_Integration_User</code> permission set granting full Read/Edit on all 5 custom Event & Task fields.</li>
+<li>Granted FLS to <code class="inline-code">System Administrator</code> and <code class="inline-code">Standard User</code> profiles and assigned the permission set to active users.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Page Layout (<code class="inline-code">Event-Event Layout</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Added a dedicated <strong>"Google Calendar Details"</strong> section containing:</li>
+<li>Left Column: <code class="inline-code">Google_Event_Id__c</code>, <code class="inline-code">Google_Meet_Link__c</code>, <code class="inline-code">Sync_Status__c</code></li>
+<li>Right Column: <code class="inline-code">Last_Sync_Source__c</code>, <code class="inline-code">Google_ETag__c</code></li>
+<li>Deployed to <code class="inline-code">learn_dc</code> so the fields are visible to all users on standard Event record pages.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 3</span>
+                <h4>Apex Integration Services Architecture</h4>
+              </div>
+          <p>The following Apex classes were implemented in <code class="inline-code">force-app/main/default/classes/</code>:</p>
+<ol class="styled-ordered-list">
+<li><strong><code class="inline-code">GoogleAuthService.cls</code></strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Generates standard JWT Header (<code class="inline-code">{&quot;alg&quot;:&quot;RS256&quot;,&quot;typ&quot;:&quot;JWT&quot;}</code>) and JWT Claims:</li>
+<li><code class="inline-code">iss</code>: Service Account Email</li>
+<li><code class="inline-code">sub</code>: Impersonated Google Workspace User Email (<code class="inline-code">sumit@skg5.com</code>)</li>
+<li><code class="inline-code">scope</code>: Google Calendar Scopes</li>
+<li><code class="inline-code">aud</code>: <code class="inline-code">https://oauth2.googleapis.com/token</code></li>
+<li><code class="inline-code">exp</code>: Issued at + 3600 seconds</li>
+<li>Signs the JWT using <code class="inline-code">Crypto.sign(&#039;RSA-SHA256&#039;, Blob.valueOf(stringToSign), privateKeyBlob)</code>.</li>
+<li>Sends <code class="inline-code">POST</code> to token endpoint and caches active Bearer tokens in memory.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong><code class="inline-code">GoogleCalendarService.cls</code></strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Encapsulates all Google Calendar v3 API operations:</li>
+<li><code class="inline-code">createEvent(...)</code>: Calls <code class="inline-code">POST /calendars/primary/events?conferenceDataVersion=1</code> to create meetings and automatically provision a Google Meet URL (<code class="inline-code">hangoutLink</code>).</li>
+<li><code class="inline-code">patchEventTimes(...)</code>: Calls <code class="inline-code">PATCH /calendars/primary/events/{eventId}</code> to shift meeting start and end times.</li>
+<li><code class="inline-code">deleteEvent(...)</code>: Calls <code class="inline-code">DELETE /calendars/primary/events/{eventId}</code> to cancel meetings.</li>
+<li><code class="inline-code">getEventsDelta(...)</code>: Calls <code class="inline-code">GET /calendars/primary/events?syncToken={token}</code> to fetch incremental changes.</li>
+<li><code class="inline-code">registerWatchChannel(...)</code> & <code class="inline-code">stopWatchChannel(...)</code>: Push notification channel lifecycle management.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong><code class="inline-code">GoogleCalendarQueueable.cls</code></strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Asynchronous worker processing incoming calendar updates.</li>
+<li>Resolves attendee emails against Salesforce <code class="inline-code">Contact</code> and <code class="inline-code">Account</code> records.</li>
+<li>Upserts or deletes corresponding Salesforce <code class="inline-code">Event</code> records with <code class="inline-code">Last_Sync_Source__c = &#039;GOOGLE&#039;</code>.</li>
+<li>Publishes <code class="inline-code">Calendar_Sync_Notification__e</code> to notify client-side components.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong><code class="inline-code">GoogleCalendarWebhookRestResource.cls</code></strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Exposes an <code class="inline-code">@RestResource(urlMapping=&#039;/google/calendar/webhook/*&#039;)</code> endpoint.</li>
+<li>Responds immediately with HTTP 200 to Google's handshake (<code class="inline-code">sync</code>) and enqueues <code class="inline-code">GoogleCalendarQueueable</code> for resource change notifications (<code class="inline-code">exists</code>).</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong><code class="inline-code">AccountCalendarController.cls</code></strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Controller powering the LWC:</li>
+<li><code class="inline-code">getIntegrationStatus()</code>: Validates configuration status.</li>
+<li><code class="inline-code">getAccountContacts(accountId)</code>: Fetches active contacts for the attendee selector.</li>
+<li><code class="inline-code">getAccountMeetings(accountId)</code>: Retrieves all scheduled events linked to the Account.</li>
+<li><code class="inline-code">createMeeting(...)</code>: Coordinates Google API creation and Salesforce Event insertion.</li>
+<li><code class="inline-code">rescheduleMeeting(...)</code>: Coordinates time-shift patching.</li>
+<li><code class="inline-code">cancelMeeting(...)</code>: Coordinates deletion.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong><code class="inline-code">GoogleCalendarTest.cls</code></strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Comprehensive unit test suite with mock callout classes (<code class="inline-code">GoogleHttpMock</code>).</li>
+<li><strong>100% test pass rate</strong> (7 of 7 test methods passing) and <strong>89% org wide code coverage</strong>.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 4</span>
+                <h4>Lightning Web Component (<code class="inline-code">accountGoogleCalendar</code>)</h4>
+              </div>
+          <p>Located in <code class="inline-code">force-app/main/default/lwc/accountGoogleCalendar/</code>:</p>
+<ul class="styled-list">
+<li><strong><code class="inline-code">accountGoogleCalendar.html</code></strong>:</li>
+<li><strong>Header</strong>: "Google Calendar Meetings" card with real-time "Live Sync" pulsing badge, refresh button, and "Schedule Meeting" modal trigger.</li>
+<li><strong>Meeting List</strong>: Displays Subject, Description, Formatted Date & Time, Attendee Contact info, direct "Join Meet" video button, and quick-action icons (Reschedule / Cancel).</li>
+<li><strong>Schedule Modal</strong>: Subject input, Account Contact dropdown attendee selector, additional email input, Start & End datetime pickers (defaulting to the next full hour), Google Meet toggle, and Agenda textarea.</li>
+<li><strong>Reschedule Modal</strong>: Intuitive datetime shift modal with start/end validation.</li>
+<li><strong>Cancel Modal</strong>: Confirmation prompt that warns users about deletion across Google and Salesforce.</li>
+<li><strong><code class="inline-code">accountGoogleCalendar.js</code></strong>:</li>
+<li>Injects <code class="inline-code">@api recordId</code> for Account record context.</li>
+<li>Subscribes via <code class="inline-code">lightning/empApi</code> to <code class="inline-code">/event/Calendar_Sync_Notification__e</code>.</li>
+<li>Automatically refreshes data when an inbound event matching the current Account is received.</li>
+<li><strong><code class="inline-code">accountGoogleCalendar.css</code></strong>:</li>
+<li>Custom badges, animated green pulse indicator for live sync, and clean SLDS styling.</li>
+<li><strong><code class="inline-code">accountGoogleCalendar.js-meta.xml</code></strong>:</li>
+<li>Configured for <code class="inline-code">lightning__RecordPage</code>, <code class="inline-code">lightning__AppPage</code>, and <code class="inline-code">lightning__HomePage</code>, targeted specifically to <code class="inline-code">Account</code>.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 5</span>
+                <h4>Live Verification & Testing Results</h4>
+              </div>
+          <p>All operations were tested against the live Salesforce org (<code class="inline-code">learn_dc</code>) and Google Workspace account (<code class="inline-code">sumit@skg5.com</code>):</p>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Test Stage</th><th>Operation</th><th>Verified Outcome</th></tr></thead><tbody><tr><td><strong>1. OAuth Token Exchange</strong></td><td><code class="inline-code">GoogleAuthService.getAccessToken(&#039;sumit@skg5.com&#039;)</code></td><td><strong>SUCCESS</strong>: Valid OAuth 2.0 Bearer token (<code class="inline-code">ya29.a0Ad...</code>) retrieved via RSA-SHA256 signed JWT.</td></tr><tr><td><strong>2. Meeting Creation</strong></td><td><code class="inline-code">AccountCalendarController.createMeeting(...)</code></td><td><strong>SUCCESS</strong>: Created Google Event (<code class="inline-code">g03jq354v72kucvkijmg0scd90</code>) with Google Meet link (<code class="inline-code">https://meet.google.com/nor-xwkp-rxv</code>) and Salesforce Event (<code class="inline-code">00Ufj000004yPpFEAU</code>).</td></tr><tr><td><strong>3. Meeting Reschedule</strong></td><td><code class="inline-code">AccountCalendarController.rescheduleMeeting(...)</code></td><td><strong>SUCCESS</strong>: Successfully shifted start/end times by +3 hours on Google Calendar and Salesforce simultaneously.</td></tr><tr><td><strong>4. Meeting Cancellation</strong></td><td><code class="inline-code">AccountCalendarController.cancelMeeting(...)</code></td><td><strong>SUCCESS</strong>: Deleted event from Google Calendar and removed Salesforce Event record.</td></tr><tr><td><strong>5. Inbound Delta Sync</strong></td><td><code class="inline-code">GoogleCalendarQueueable</code></td><td><strong>SUCCESS</strong>: External event fetched from Google Calendar, matched to Account (<code class="inline-code">WhatId</code>) and Contact (<code class="inline-code">WhoId</code>), and inserted with <code class="inline-code">Last_Sync_Source__c = &#039;GOOGLE&#039;</code> (Loop prevention verified).</td></tr><tr><td><strong>6. Apex Test Suite</strong></td><td><code class="inline-code">GoogleCalendarTest</code></td><td><strong>SUCCESS</strong>: All 7 unit tests passed with 100% pass rate and 89% code coverage.</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-6-directory-file-structure">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 6. Directory & File Structure</h2>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">CODE</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-">force-app/main/default/
+├── classes/
+│   ├── AccountCalendarController.cls
+│   ├── AccountCalendarController.cls-meta.xml
+│   ├── GoogleAuthService.cls
+│   ├── GoogleAuthService.cls-meta.xml
+│   ├── GoogleCalendarQueueable.cls
+│   ├── GoogleCalendarQueueable.cls-meta.xml
+│   ├── GoogleCalendarService.cls
+│   ├── GoogleCalendarService.cls-meta.xml
+│   ├── GoogleCalendarTest.cls
+│   ├── GoogleCalendarTest.cls-meta.xml
+│   ├── GoogleCalendarWebhookRestResource.cls
+│   └── GoogleCalendarWebhookRestResource.cls-meta.xml
+├── customMetadata/
+│   └── Google_Calendar_Setting.Default_Setting.md-meta.xml
+├── lwc/
+│   └── accountGoogleCalendar/
+│       ├── accountGoogleCalendar.css
+│       ├── accountGoogleCalendar.html
+│       ├── accountGoogleCalendar.js
+│       └── accountGoogleCalendar.js-meta.xml
+├── objects/
+│   ├── Activity/
+│   │   └── fields/
+│   │       ├── Google_ETag__c.field-meta.xml
+│   │       ├── Google_Event_Id__c.field-meta.xml
+│   │       ├── Google_Meet_Link__c.field-meta.xml
+│   │       ├── Last_Sync_Source__c.field-meta.xml
+│   │       └── Sync_Status__c.field-meta.xml
+│   ├── Calendar_Sync_Notification__e/
+│   │   ├── Calendar_Sync_Notification__e.object-meta.xml
+│   │   └── fields/
+│   │       ├── AccountId__c.field-meta.xml
+│   │       ├── Action__c.field-meta.xml
+│   │       ├── EventId__c.field-meta.xml
+│   │       └── Timestamp__c.field-meta.xml
+│   └── Google_Calendar_Setting__mdt/
+│       ├── Google_Calendar_Setting__mdt.object-meta.xml
+│       └── fields/
+│           ├── Certificate_Name__c.field-meta.xml
+│           ├── Client_Id__c.field-meta.xml
+│           ├── Private_Key__c.field-meta.xml
+│           ├── Service_Account_Email__c.field-meta.xml
+│           ├── Token_Endpoint__c.field-meta.xml
+│           ├── Webhook_Callback_URL__c.field-meta.xml
+│           └── Workspace_User_Email__c.field-meta.xml
+├── permissionsets/
+│   └── Google_Calendar_Integration_User.permissionset-meta.xml
+└── remoteSiteSettings/
+    ├── Google_Calendar_API.remoteSite-meta.xml
+    └── Google_OAuth_Endpoint.remoteSite-meta.xml</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-7-how-to-use-on-the-account-record-page">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 7. How to Use on the Account Record Page</h2>
+<ol class="styled-ordered-list">
+<li>Log in to Salesforce (<code class="inline-code">learn_dc</code>).</li>
+<li>Open any <strong>Account</strong> record.</li>
+<li>Click the <strong>Gear icon (⚙️) > Edit Page</strong> to open the <strong>Lightning App Builder</strong>.</li>
+<li>In the component palette on the left, search for <strong>Account Google Calendar</strong>.</li>
+<li>Drag and drop the component onto your Account page layout (e.g. in the right-hand column or under an "Activity" tab).</li>
+<li>Click <strong>Save</strong> and <strong>Activate</strong> (assign as Org Default or App Default).</li>
+<li>You can now schedule meetings with contacts, shift times, join Google Meet calls, and watch calendar updates sync in real time!</li>
+</ol>
+</section>
+
+  </div>
+
+  <a href="#" class="back-to-top">↑ Top</a>
+
+  <footer>
+    <strong>Salesforce Lightning Platform • Enterprise AI Integration Guide</strong><br/>
+    Internal Engineering Reference & Operational Playbook • Org: <code>learn_dc</code>
+  </footer>
+
+  <script>
+    function copyCode(btn) {
+      const container = btn.closest('.code-container');
+      const code = container.querySelector('code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const origText = btn.innerText;
+        btn.innerText = '✓ Copied!';
+        btn.style.background = '#2EB67D';
+        btn.style.borderColor = '#2EB67D';
+        btn.style.color = '#ffffff';
+        setTimeout(() => {
+          btn.innerText = origText;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 2000);
+      });
+    }
+
+    // Scroll Progress & Active Tab Highlighting
+    window.addEventListener('scroll', () => {
+      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / height) * 100;
+      document.getElementById('progress-bar').style.width = scrolled + '%';
+
+      const sections = document.querySelectorAll('.section-card');
+      const navTabs = document.querySelectorAll('.nav-tab');
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        if (winScroll >= sectionTop - 140) {
+          current = section.getAttribute('id');
+        }
+      });
+      navTabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.getAttribute('href') === '#' + current) {
+          tab.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+  

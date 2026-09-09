@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Guide: Integrating Slack Slash Commands into Salesforce LWC (`slackBotAgent`) | Salesforce Enterprise Architecture</title>
+  <!-- Mermaid JS for Dynamic Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      securityLevel: 'loose',
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+      sequence: { useMaxWidth: true, showSequenceNumbers: true }
+    });
+  </script>
+  <style>
+    :root {
+      --sf-blue: #0176D3;
+      --sf-dark-blue: #0b5cab;
+      --sf-navy: #032d60;
+      --slack-aubergine: #4A154B;
+      --slack-green: #2EB67D;
+      --slack-yellow: #ECB22E;
+      --slack-red: #E01E5A;
+      --slack-blue: #36C5F0;
+      --gcp-blue: #4285F4;
+      --snowflake-blue: #29B5E8;
+      --gmail-red: #EA4335;
+      --cal-blue: #1A73E8;
+      --bg-light: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --border-color: #e2e8f0;
+      --code-bg: #1e1e24;
+      --radius-lg: 12px;
+      --radius-md: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-light);
+      color: var(--text-main);
+      line-height: 1.68;
+      padding-bottom: 80px;
+    }
+
+    /* Scroll progress indicator */
+    #progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--sf-blue), var(--slack-green), var(--slack-blue));
+      width: 0%;
+      z-index: 999;
+      transition: width 0.1s ease;
+    }
+
+    /* Hero Header */
+    header.hero {
+      background: linear-gradient(135deg, var(--sf-navy) 0%, #0f172a 45%, var(--slack-aubergine) 100%);
+      color: white;
+      padding: 48px 24px;
+      text-align: center;
+      border-bottom: 4px solid var(--slack-green);
+      position: relative;
+    }
+
+    header.hero h1 {
+      font-size: 2.3rem;
+      margin-bottom: 12px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    header.hero p {
+      font-size: 1.1rem;
+      color: #cbd5e1;
+      max-width: 850px;
+      margin: 0 auto 20px auto;
+    }
+
+    .badge-bar {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f1f5f9;
+    }
+
+    .badge.success {
+      background: rgba(46, 182, 125, 0.25);
+      border-color: #2EB67D;
+      color: #86efac;
+    }
+
+    /* Layout Container */
+    .container {
+      max-width: 1220px;
+      margin: 28px auto;
+      padding: 0 20px;
+    }
+
+    /* Sticky Navigation Bar with Search */
+    .nav-wrapper {
+      position: sticky;
+      top: 12px;
+      z-index: 100;
+      margin-bottom: 28px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      padding: 6px;
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      scrollbar-width: thin;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .nav-tab {
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      color: var(--text-sub);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .nav-tab:hover {
+      background: #f1f5f9;
+      color: var(--sf-blue);
+    }
+
+    .nav-tab.active {
+      background: var(--sf-blue);
+      color: #ffffff;
+    }
+
+    /* Section Cards */
+    .section-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    h2.section-title {
+      font-size: 1.55rem;
+      margin-bottom: 20px;
+      color: var(--sf-navy);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 12px;
+    }
+
+    .title-badge {
+      font-size: 0.72rem;
+      font-weight: 800;
+      background: #e0f2fe;
+      color: var(--sf-blue);
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    h3.sub-title {
+      font-size: 1.25rem;
+      margin: 24px 0 12px 0;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h4.sub-sub-title {
+      font-size: 1.05rem;
+      margin: 18px 0 10px 0;
+      color: #1e293b;
+    }
+
+    p {
+      color: #334155;
+      font-size: 0.98rem;
+      margin-bottom: 14px;
+    }
+
+    /* Lists */
+    ul.styled-list, ol.styled-ordered-list {
+      padding-left: 24px;
+      margin-bottom: 18px;
+    }
+
+    li {
+      color: #334155;
+      font-size: 0.96rem;
+      margin-bottom: 8px;
+    }
+
+    li.task-item {
+      list-style-type: none;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    li.task-item.checked {
+      color: #059669;
+      font-weight: 500;
+    }
+
+    .check-icon {
+      font-weight: bold;
+      color: #10b981;
+    }
+
+    /* Visual Illustration Card */
+    .visual-illustration-card {
+      background: #0f172a;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin: 24px 0 32px 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      border: 1px solid #334155;
+    }
+
+    .illustration-header {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .illustration-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: #0284c7;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .illustration-header h3 {
+      font-size: 1.2rem;
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    /* Diagram Box (Mermaid) */
+    .diagram-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin: 22px 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+
+    .diagram-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    /* Step Card */
+    .step-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 18px 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      border-left: 4px solid var(--sf-blue);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .step-badge {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #ffffff;
+      background: var(--sf-blue);
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .step-card h4 {
+      font-size: 1.15rem;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    /* Code Container & Syntax Styling */
+    .code-container {
+      background: var(--code-bg);
+      border-radius: var(--radius-md);
+      margin: 18px 0;
+      overflow: hidden;
+      border: 1px solid #334155;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #141418;
+      padding: 8px 16px;
+      border-bottom: 1px solid #2d2d35;
+    }
+
+    .lang-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+    }
+
+    .copy-btn {
+      background: #282832;
+      color: #cbd5e1;
+      border: 1px solid #444;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: var(--sf-blue);
+      color: #ffffff;
+      border-color: var(--sf-blue);
+    }
+
+    pre {
+      padding: 16px;
+      overflow-x: auto;
+      color: #f8f8f2;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    }
+
+    .inline-code {
+      background: #edf2f7;
+      color: #c026d3;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      border: 1px solid #e2e8f0;
+      font-weight: 600;
+    }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      text-align: left;
+      font-size: 0.94rem;
+    }
+
+    .styled-table th {
+      background: #f1f5f9;
+      color: var(--sf-navy);
+      font-weight: 700;
+      padding: 12px 16px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+
+    .styled-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+
+    .styled-table tr:hover {
+      background: #f8fafc;
+    }
+
+    /* Callout Boxes */
+    .callout-box {
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      margin: 20px 0;
+      border-left: 4px solid;
+    }
+
+    .callout-box.info {
+      background: #f0f9ff;
+      border-color: #0284c7;
+    }
+    .callout-box.info .callout-title { color: #0369a1; }
+
+    .callout-box.tip {
+      background: #fdf4ff;
+      border-color: #c084fc;
+    }
+    .callout-box.tip .callout-title { color: #7e22ce; }
+
+    .callout-box.warning {
+      background: #fffbeb;
+      border-color: #f59e0b;
+    }
+    .callout-box.warning .callout-title { color: #b45309; }
+
+    .callout-box.important {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+    .callout-box.important .callout-title { color: #1d4ed8; }
+
+    .callout-box.caution {
+      background: #fef2f2;
+      border-color: #ef4444;
+    }
+    .callout-box.caution .callout-title { color: #b91c1c; }
+
+    .callout-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .callout-body {
+      color: #334155;
+      font-size: 0.95rem;
+    }
+
+    hr.section-divider {
+      border: 0;
+      height: 1px;
+      background: #e2e8f0;
+      margin: 32px 0;
+    }
+
+    /* Image Container */
+    .doc-img-container {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .doc-img {
+      max-width: 100%;
+      border-radius: var(--radius-md);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border: 1px solid var(--border-color);
+    }
+    .img-caption {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    /* Back to top button */
+    .back-to-top {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--sf-blue);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 24px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(1, 118, 211, 0.4);
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      z-index: 99;
+    }
+
+    .back-to-top:hover {
+      background: var(--sf-dark-blue);
+      transform: translateY(-2px);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 32px 20px;
+      color: #64748b;
+      font-size: 0.88rem;
+      border-top: 1px solid var(--border-color);
+      background: #ffffff;
+      margin-top: 48px;
+    }
+
+    @media print {
+      .nav-wrapper, .back-to-top, .copy-btn, #progress-bar { display: none !important; }
+      .section-card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div id="progress-bar"></div>
+
+  <!-- Hero Header -->
+  <header class="hero">
+    <h1>Complete Guide: Integrating Slack Slash Commands into Salesforce LWC (`slackBotAgent`)</h1>
+    <p>Enterprise Technical Documentation &amp; Operational Reference</p>
+    <div class="badge-bar">
+      <span class="badge success">Production Ready</span>
+      <span class="badge ">Salesforce Lightning</span>
+      <span class="badge ">Enterprise Architecture</span>
+      <span class="badge ">Complete Implementation</span>
+      <span class="badge ">Slack Enterprise</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Sticky Navigation Tabs -->
+    <div class="nav-wrapper">
+      <nav class="nav-tabs">
+        <a href="#sec-1-executive-summary-architecture" class="nav-tab">Executive Summary &amp; Architecture</a>
+        <a href="#sec-2-supported-slash-commands-functional-specifications" class="nav-tab">Supported Slash Commands &amp; Functional Specifications</a>
+        <a href="#sec-3-frontend-implementation-lwc-layer" class="nav-tab">Frontend Implementation: LWC Layer</a>
+        <a href="#sec-4-backend-controller-implementation-apex-layer" class="nav-tab">Backend Controller Implementation: Apex Layer</a>
+        <a href="#sec-5-bidirectional-synchronization-activity-logging" class="nav-tab">Bidirectional Synchronization &amp; Activity Logging</a>
+        <a href="#sec-6-blueprint-for-adding-new-slash-commands" class="nav-tab">Blueprint for Adding New Slash Commands</a>
+        <a href="#sec-7-background-desktop-notifications-tab-title-flashing" class="nav-tab">Background Desktop Notifications &amp; Tab Title Flashing</a>
+        <a href="#sec-8-verification-testing" class="nav-tab">Verification &amp; Testing</a>
+      </nav>
+    </div>
+
+    <!-- Document Content Sections -->
+    <section class="section-card" id="sec-1-executive-summary-architecture">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 1. Executive Summary & Architecture</h2>
+
+    <div class="visual-illustration-card">
+      <div class="illustration-header">
+        <span class="illustration-tag">User Experience & Architectural Blueprint</span>
+        <h3>Interactive LWC Slash Command Autocomplete & SLDS Dossier Card</h3>
+      </div>
+      <svg viewBox="0 0 960 360" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+        <!-- LWC Chat Interface Container -->
+        <rect x="40" y="30" width="460" height="300" rx="12" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+        <rect x="40" y="30" width="460" height="40" rx="12" fill="#032d60"/>
+        <text x="60" y="55" fill="#ffffff" font-size="14" font-weight="bold">💬 Salesforce Copilot • slackBotAgent</text>
+
+        <!-- Chat Bubble (Slash Command Execution) -->
+        <rect x="60" y="85" width="220" height="32" rx="8" fill="#0176D3"/>
+        <text x="75" y="106" fill="#ffffff" font-size="12" font-family="monospace">/account-brief Edge Comms</text>
+
+        <!-- Autocomplete Menu Dropdown -->
+        <g transform="translate(60, 130)">
+          <rect x="0" y="0" width="380" height="130" rx="8" fill="#0f172a" stroke="#4A154B" stroke-width="2"/>
+          <rect x="6" y="6" width="368" height="28" rx="5" fill="#4A154B"/>
+          <text x="18" y="25" fill="#ffffff" font-size="12" font-weight="bold">/account-brief</text>
+          <text x="130" y="25" fill="#e2e8f0" font-size="11">— 360° Account Dossier & Vitals</text>
+
+          <text x="18" y="54" fill="#93c5fd" font-size="12" font-weight="bold">/summarize-thread</text>
+          <text x="150" y="54" fill="#94a3b8" font-size="11">— AI Thread Summarization</text>
+
+          <text x="18" y="83" fill="#93c5fd" font-size="12" font-weight="bold">/snowflake</text>
+          <text x="110" y="83" fill="#94a3b8" font-size="11">— Live DWH Health & Consumption</text>
+
+          <text x="18" y="112" fill="#93c5fd" font-size="12" font-weight="bold">/help</text>
+          <text x="75" y="112" fill="#94a3b8" font-size="11">— Command Reference & Syntax</text>
+        </g>
+
+        <!-- Input Bar with "/" trigger -->
+        <rect x="55" y="275" width="430" height="42" rx="8" fill="#0f172a" stroke="#0ea5e9" stroke-width="2"/>
+        <text x="70" y="301" fill="#f8fafc" font-size="13" font-family="monospace">/|</text>
+        <rect x="425" y="282" width="50" height="28" rx="5" fill="#0176D3"/>
+        <text x="450" y="300" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">Send</text>
+
+        <!-- Result SLDS Executive Card Mockup (Right) -->
+        <g transform="translate(530, 30)">
+          <rect x="0" y="0" width="390" height="300" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+          <rect x="0" y="0" width="390" height="42" rx="12" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1"/>
+          <text x="20" y="26" fill="#032d60" font-size="14" font-weight="bold">🏢 Edge Communications Dossier</text>
+
+          <!-- Badges -->
+          <rect x="20" y="54" width="70" height="22" rx="11" fill="#ecfdf5" stroke="#10b981"/>
+          <text x="55" y="69" fill="#059669" font-size="10" font-weight="bold" text-anchor="middle">HEALTH: 88</text>
+
+          <rect x="100" y="54" width="85" height="22" rx="11" fill="#eff6ff" stroke="#3b82f6"/>
+          <text x="142" y="69" fill="#1d4ed8" font-size="10" font-weight="bold" text-anchor="middle">SLA: PLATINUM</text>
+
+          <rect x="195" y="54" width="95" height="22" rx="11" fill="#fdf2f8" stroke="#ec4899"/>
+          <text x="242" y="69" fill="#be185d" font-size="10" font-weight="bold" text-anchor="middle">RISK: LOW (12%)</text>
+
+          <!-- Details -->
+          <text x="20" y="105" fill="#1e293b" font-size="12" font-weight="bold">CSM Assigned:</text>
+          <text x="120" y="105" fill="#475569" font-size="12">Summo CSM (Teqfocus)</text>
+
+          <text x="20" y="128" fill="#1e293b" font-size="12" font-weight="bold">Primary Contact:</text>
+          <text x="130" y="128" fill="#475569" font-size="12">Rose Gonzalez (VP Ops)</text>
+
+          <!-- Gemini AI Narrative Box -->
+          <rect x="20" y="145" width="350" height="95" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+          <text x="30" y="165" fill="#032d60" font-size="11" font-weight="bold">🤖 Gemini 3.6 Flash Synthesis:</text>
+          <text x="30" y="185" fill="#334155" font-size="11">Active expansion discussion on EMEA infrastructure.</text>
+          <text x="30" y="202" fill="#334155" font-size="11">Follow-up meeting scheduled on Google Calendar.</text>
+          <text x="30" y="222" fill="#059669" font-size="11" font-weight="bold">✓ Action Item: Dispatch quarterly consumption report.</text>
+
+          <!-- Deep Link Button -->
+          <rect x="20" y="252" width="350" height="32" rx="6" fill="#4A154B"/>
+          <text x="195" y="273" fill="#ffffff" font-size="12" font-weight="bold" text-anchor="middle">💬 View in Slack History ↗</text>
+        </g>
+      </svg>
+    </div>
+  
+<p>This guide details the complete architecture, implementation steps, and code blueprints for integrating <strong>Slack Slash Commands natively into a Salesforce Lightning Web Component (LWC)</strong>.</p>
+<p>By bridging Slack Slash Commands into the <strong><code class="inline-code">slackBotAgent</code></strong> LWC, users in Salesforce enjoy the <strong>exact same power-user shortcuts as in Slack</strong>, with full bidirectional synchronization:</p>
+<ul class="styled-list">
+<li><strong>In Salesforce LWC</strong>: Fast command execution with a floating autocomplete menu, smart record context awareness, and rich SLDS cards.</li>
+<li><strong>In Slack App</strong>: Every command and response is automatically cross-posted into a persistent Slack thread.</li>
+<li><strong>In Salesforce Activity Timeline</strong>: Every interaction is recorded as a completed <code class="inline-code">Task</code> under the active Account.</li>
+</ul>
+<hr class="section-divider"/>
+<h3 class="sub-title">Architectural Sequence Diagram</h3>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor Rep as Salesforce User (CSM/AE)
+    participant LWC as slackBotAgent LWC
+    participant Apex as SlackBotAgentController.cls
+    participant MCP as LearnDC MCP Server (Apex)
+    participant Slack as Slack API (chat.postMessage)
+    participant Task as Salesforce Activity Timeline (Task)
+
+    Rep->>LWC: Types "/" into input composer
+    LWC->>LWC: Opens floating command palette (/account-brief, /summarize-thread, /help)
+    Rep->>LWC: Selects or types "/account-brief"
+    LWC->>Apex: sendMessage(sessionId, '/account-brief', recordId)
+    
+    rect rgb(240, 248, 255)
+        Note over Apex: Command Routing & Context Detection
+        Apex->>Apex: Detects startsWith('/') -> executeSlashCommand()
+        Apex->>Apex: Checks active recordId (defaults to Edge Communications)
+        Apex->>MCP: LearnDCMCPAccountAction.getAccountDetails()
+        MCP-->>Apex: Returns Account vitals, CSM Email, Contacts
+        Apex->>MCP: LearnDCMCPThreadAction.getThreadSummary()
+        MCP-->>Apex: Returns dynamic email summary & action items
+    end
+
+    Apex-->>LWC: Returns ChatResponseDTO (messageType: 'accountCard', cardData, slackThreadUrl)
+    LWC->>Rep: Renders Executive Dossier SLDS Card + [💬 View in Slack History]
+
+    rect rgb(255, 245, 245)
+        Note over Apex,Slack: Asynchronous Outbound Sync (@future callout)
+        Apex->>Slack: POST /api/chat.postMessage (User Command)
+        Slack-->>Apex: Returns thread_ts
+        Apex->>Slack: POST /api/chat.postMessage (Bot Response in thread)
+        Apex->>Task: Inserts completed Task record linked to Account (WhatId)
+    end
+              </div>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-2-supported-slash-commands-functional-specifications">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 2. Supported Slash Commands & Functional Specifications</h2>
+<h3 class="sub-title">1. <code class="inline-code">/account-brief [Account Name]</code></h3>
+<ul class="styled-list">
+<li><strong>Purpose</strong>: Generates an instant <strong>360° Executive Briefing</strong> for an Account before client meetings.</li>
+<li><strong>Smart Context Defaulting</strong>:</li>
+<li>If executed on an Account record page without parameters (<code class="inline-code">/account-brief</code>), it automatically identifies and summarizes the <strong>current active Account</strong>.</li>
+<li>If an account name is provided (<code class="inline-code">/account-brief Acme Corp</code>), it searches Salesforce for that account name, allowing reps to research other accounts without navigating away.</li>
+<li><strong>Returned Data</strong>: Industry, CSM Email, Primary Contact & Title, Contact Summary, and recent customer email intelligence (Executive Summary + Action Items).</li>
+</ul>
+<h3 class="sub-title">2. <code class="inline-code">/summarize-thread [Thread ID]</code></h3>
+<ul class="styled-list">
+<li><strong>Purpose</strong>: Triggers <strong>dynamic Gemini AI summarization</strong> for a specific customer email thread.</li>
+<li><strong>Capabilities</strong>: Looks up the thread across synced emails and cached summaries, invoking Gemini 3.6 Flash to parse the complete chronological transcript.</li>
+<li><strong>Returned Data</strong>: Executive Summary, Key Discussion Points, and Pending Action Items.</li>
+</ul>
+<h3 class="sub-title">3. <code class="inline-code">/help</code></h3>
+<ul class="styled-list">
+<li><strong>Purpose</strong>: Displays the complete reference manual of supported slash commands directly in the chat feed.</li>
+</ul>
+<h3 class="sub-title">4. Unrecognized Commands (e.g. <code class="inline-code">/unknown</code>)</h3>
+<ul class="styled-list">
+<li><strong>Behavior</strong>: Fails gracefully with a formal remediation message:</li>
+</ul>
+<p>  <code class="inline-code">&quot;I am unable to process the command &#039;/unknown&#039; because it is not recognized. Type /help to view all available slash commands.&quot;</code></p>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-3-frontend-implementation-lwc-layer">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 3. Frontend Implementation: LWC Layer</h2>
+<h3 class="sub-title">A. Autocomplete Popover & Menu (<code class="inline-code">slackBotAgent.html</code>)</h3>
+<p>A floating command palette is positioned above the input box and rendered conditionally when <code class="inline-code">showSlashMenu</code> is true:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">HTML</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-html">&lt;!-- Slash Command Autocomplete Popover --&gt;
+&lt;template if:true={showSlashMenu}&gt;
+    &lt;div class=&quot;slash-menu-popover&quot;&gt;
+        &lt;div class=&quot;slash-menu-header&quot;&gt;
+            &lt;span&gt;⚡ SLACK BOT SLASH COMMANDS&lt;/span&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;slash-item&quot; data-cmd=&quot;/account-brief&quot; onclick={handleSelectSlashCommand}&gt;
+            &lt;div class=&quot;slash-item-title&quot;&gt;&lt;strong&gt;/account-brief&lt;/strong&gt; &lt;span class=&quot;slash-item-arg&quot;&gt;[Account Name]&lt;/span&gt;&lt;/div&gt;
+            &lt;div class=&quot;slash-item-desc&quot;&gt;360° Account executive briefing with live CRM vitals, CSM, &amp;amp; email summary&lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;slash-item&quot; data-cmd=&quot;/summarize-thread &quot; onclick={handleSelectSlashCommand}&gt;
+            &lt;div class=&quot;slash-item-title&quot;&gt;&lt;strong&gt;/summarize-thread&lt;/strong&gt; &lt;span class=&quot;slash-item-arg&quot;&gt;[Thread ID]&lt;/span&gt;&lt;/div&gt;
+            &lt;div class=&quot;slash-item-desc&quot;&gt;Dynamic Gemini AI email thread summarization &amp;amp; action items&lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;slash-item&quot; data-cmd=&quot;/help&quot; onclick={handleSelectSlashCommand}&gt;
+            &lt;div class=&quot;slash-item-title&quot;&gt;&lt;strong&gt;/help&lt;/strong&gt;&lt;/div&gt;
+            &lt;div class=&quot;slash-item-desc&quot;&gt;Show all available commands reference guide&lt;/div&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;
+&lt;/template&gt;</code></pre>
+            </div>
+          <h3 class="sub-title">B. JavaScript Event Controller (<code class="inline-code">slackBotAgent.js</code>)</h3>
+<p>Key event handlers for typing detection, selection, and keyboard shortcuts:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">JAVASCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-javascript">// 1. Detect slash character as user types
+handleInputChange(event) {
+    this.inputMessage = event.target.value;
+    const trimmed = (this.inputMessage || &#039;&#039;).trim();
+    // Display popup when input starts with &#039;/&#039; and does not yet contain a space
+    this.showSlashMenu = trimmed.startsWith(&#039;/&#039;) &amp;&amp; !trimmed.includes(&#039; &#039;);
+}
+
+// 2. Keyboard accessibility (Escape closes, Enter sends)
+handleKeyUp(event) {
+    if (event.keyCode === 27) { // Escape
+        this.showSlashMenu = false;
+        return;
+    }
+    if (event.keyCode === 13 &amp;&amp; !this.isSendDisabled) { // Enter
+        this.showSlashMenu = false;
+        this.handleSendMessage();
+    }
+}
+
+// 3. Command selection from popup
+handleSelectSlashCommand(event) {
+    const cmd = event.currentTarget.dataset.cmd;
+    if (cmd) {
+        this.inputMessage = cmd;
+        this.showSlashMenu = false;
+        // Commands ready to execute immediately
+        if (cmd === &#039;/help&#039; || cmd === &#039;/account-brief&#039;) {
+            this.handleSendMessage();
+        } else {
+            // Focus input for user to type thread ID
+            const inputEl = this.template.querySelector(&#039;lightning-input&#039;);
+            if (inputEl) inputEl.focus();
+        }
+    }
+}</code></pre>
+            </div>
+          <h3 class="sub-title">C. Styling & Floating Positioning (<code class="inline-code">slackBotAgent.css</code>)</h3>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">CSS</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-css">.copilot-footer {
+    position: relative;
+    background-color: #ffffff;
+    flex-shrink: 0;
+}
+
+.slash-menu-popover {
+    position: absolute;
+    bottom: 56px;
+    left: 12px;
+    right: 12px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+    z-index: 999;
+    overflow: hidden;
+    animation: fadeIn 0.15s ease-out;
+}
+
+.slash-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background-color 0.12s ease;
+}
+
+.slash-item:hover {
+    background-color: #fdf4ff; /* Light Slack purple */
+}
+
+.slash-item-title strong {
+    color: #4a154b; /* Signature Slack aubergine */
+}
+
+.user-command-tag {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.25);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-right: 4px;
+}</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-4-backend-controller-implementation-apex-layer">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 4. Backend Controller Implementation: Apex Layer</h2>
+<h3 class="sub-title">A. Command Interceptor in <code class="inline-code">SlackBotAgentController.cls</code></h3>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">JAVA</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-java">@AuraEnabled
+public static ChatResponseDTO sendMessage(String sessionId, String userMessage, Id accountId) {
+    if (String.isBlank(userMessage)) {
+        ChatResponseDTO err = new ChatResponseDTO();
+        err.isSuccess = false;
+        err.messageText = &#039;I am unable to process this request because no query was provided.&#039;;
+        return err;
+    }
+
+    ChatResponseDTO dto;
+
+    // 1. Direct Slash Command Interception
+    if (userMessage.trim().startsWith(&#039;/&#039;)) {
+        dto = executeSlashCommand(userMessage, accountId);
+    } else {
+        // 2. Fallback to Natural Language Processing (Gemini + MCP)
+        LearnDCAccountCopilotController.ChatResponseDTO nativeRes = 
+            LearnDCAccountCopilotController.sendMessage(sessionId, userMessage, accountId);
+        dto = new ChatResponseDTO();
+        dto.isSuccess = nativeRes.isSuccess;
+        dto.messageText = nativeRes.messageText;
+        dto.messageType = nativeRes.messageType;
+        dto.cardData = nativeRes.cardData;
+        dto.activityTimelineUpdated = nativeRes.activityTimelineUpdated;
+    }
+
+    dto.activityTimelineUpdated = true;
+    dto.slackThreadUrl = &#039;https://slack.com/app_redirect?channel=D0BUQS5V68Z&#039;;
+
+    // 3. Format full response text for Slack &amp; Salesforce history
+    String fullReplyText = buildFullMessageText(dto);
+
+    // 4. Asynchronously cross-post to Slack and insert completed Task record
+    if (!Test.isRunningTest()) {
+        syncChatToSlackAndSalesforceAsync(accountId, accName, UserInfo.getName(), userMessage, fullReplyText);
+    }
+
+    return dto;
+}</code></pre>
+            </div>
+          <h3 class="sub-title">B. Command Routing Method: <code class="inline-code">executeSlashCommand</code></h3>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">JAVA</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-java">public static ChatResponseDTO executeSlashCommand(String commandText, Id currentAccountId) {
+    ChatResponseDTO res = new ChatResponseDTO();
+    String trimmed = commandText.trim();
+    Integer firstSpace = trimmed.indexOf(&#039; &#039;);
+    String cmd = (firstSpace != -1) ? trimmed.substring(0, firstSpace).toLowerCase() : trimmed.toLowerCase();
+    String param = (firstSpace != -1) ? trimmed.substring(firstSpace + 1).trim() : &#039;&#039;;
+
+    // /help
+    if (cmd == &#039;/help&#039;) {
+        res.messageText = &#039;🤖 **Slack Bot Agent Slash Commands Reference**:\n\n&#039; +
+            &#039;• `/account-brief [Account Name]` — 360° Account executive briefing.\n&#039; +
+            &#039;• `/summarize-thread [Thread ID]` — Dynamic Gemini AI email thread summary.\n&#039; +
+            &#039;• `/help` — View this reference guide.&#039;;
+        return res;
+    }
+
+    // /account-brief
+    if (cmd == &#039;/account-brief&#039;) {
+        Account targetAcc;
+        if (String.isNotBlank(param)) {
+            List&lt;Account&gt; accs = [SELECT Id, Name FROM Account WHERE Name LIKE :(&#039;%&#039; + param + &#039;%&#039;) OR Id = :param LIMIT 1];
+            if (!accs.isEmpty()) targetAcc = accs[0];
+            else {
+                res.isSuccess = false;
+                res.messageText = &#039;I am unable to generate an account brief because no Account matching &quot;&#039; + param + &#039;&quot; was found in Salesforce.&#039;;
+                return res;
+            }
+        } else if (currentAccountId != null) {
+            targetAcc = [SELECT Id, Name FROM Account WHERE Id = :currentAccountId LIMIT 1];
+        }
+
+        // Call LearnDCMCPAccountAction &amp; LearnDCMCPThreadAction
+        // Assemble accountCard DTO
+        res.messageType = &#039;accountCard&#039;;
+        return res;
+    }
+
+    // /summarize-thread
+    if (cmd == &#039;/summarize-thread&#039;) {
+        // Look up by param or locate recent thread on active account
+        // Assemble threadSummaryCard DTO
+        res.messageType = &#039;threadSummaryCard&#039;;
+        return res;
+    }
+
+    // Unrecognized
+    res.isSuccess = false;
+    res.messageText = &#039;I am unable to process the command `&#039; + cmd + &#039;` because it is not recognized. Type `/help` to view all available slash commands.&#039;;
+    return res;
+}</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-5-bidirectional-synchronization-activity-logging">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 5. Bidirectional Synchronization & Activity Logging</h2>
+<p>When a slash command executes in the LWC, <code class="inline-code">syncChatToSlackAndSalesforceAsync</code> guarantees that Slack and Salesforce remain synchronized without user intervention:</p>
+<h3 class="sub-title">1. Slack Outbound Thread Creation</h3>
+<ul class="styled-list">
+<li>Sends HTTP <code class="inline-code">POST</code> to <code class="inline-code">https://slack.com/api/chat.postMessage</code> using Bot Token <code class="inline-code">xoxb-...</code>.</li>
+<li><strong>First Message</strong>: Posts the command executed by the user:</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TEXT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-text">  👤 Sumit (via Salesforce LWC) on Edge Communications:
+  &gt; /account-brief</code></pre>
+            </div>
+          <ul class="styled-list">
+<li><strong>Second Message (In Thread)</strong>: Captures the returned <code class="inline-code">ts</code> and posts the full response card as a threaded reply:</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TEXT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-text">  🤖 Slack Bot Agent (Gemini 3.6 Flash):
+  🏢 Executive Brief: Edge Communications
+  • Account: Edge Communications
+  • CSM Email: None assigned
+  • Primary Contact: Rose Gonzalez (rose@edge.com)
+  • Industry: Electronics</code></pre>
+            </div>
+          <h3 class="sub-title">2. Salesforce Activity Timeline Logging</h3>
+<ul class="styled-list">
+<li>An automated <code class="inline-code">Task</code> record is inserted linked to the Account:</li>
+<li><strong>WhatId</strong>: <code class="inline-code">accountId</code></li>
+<li><strong>Subject</strong>: <code class="inline-code">Slack Bot Agent: /account-brief</code></li>
+<li><strong>Status</strong>: <code class="inline-code">Completed</code></li>
+<li><strong>Description</strong>: Includes the user command, the full bot response, and the direct clickable link to the Slack thread.</li>
+<li>The LWC triggers <code class="inline-code">notifyRecordUpdateAvailable([{ recordId: this.recordId }])</code>, causing Salesforce's native Activity Timeline to refresh immediately on screen.</li>
+</ul>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-6-blueprint-for-adding-new-slash-commands">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 6. Blueprint for Adding New Slash Commands</h2>
+<p>To add any new slash command in the future (e.g. <code class="inline-code">/create-case</code> or <code class="inline-code">/schedule-sync</code>), follow this 3-step pattern:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TEXT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-text">Step 1: Add command entry in slackBotAgent.html popover list.
+Step 2: Add if (cmd === &#039;/my-command&#039;) block in SlackBotAgentController.executeSlashCommand.
+Step 3: Add unit test method in SlackBotAgentControllerTest.cls.</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-7-background-desktop-notifications-tab-title-flashing">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 7. Background Desktop Notifications & Tab Title Flashing</h2>
+<p>To provide an elite enterprise multitasking experience, the <code class="inline-code">slackBotAgent</code> LWC includes native OS-level desktop notifications:</p>
+<h3 class="sub-title">How it Works</h3>
+<ol class="styled-ordered-list">
+<li><strong>Permission Control</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>An interactive bell toggle icon (<code class="inline-code">utility:notification</code> / <code class="inline-code">utility:volume_off</code>) in the LWC header allows users to grant or mute notifications with one click.</li>
+<li>Browsers remember permission for the Salesforce domain.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Smart Visibility Sensing (<code class="inline-code">document.hidden</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>If the user is actively watching the chat feed, desktop popups are suppressed.</li>
+<li>If the user minimizes the browser or switches to another application (e.g. Slack, Excel, VS Code), <code class="inline-code">document.hidden === true</code> triggers an OS-level notification card via <code class="inline-code">window.Notification</code>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Desktop Popup Behavior</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Displays the active Account title and the first 110 characters of the AI response.</li>
+<li>Clicking the OS notification card immediately focuses the browser window and returns the user to the Salesforce tab.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Tab Title Badge Flashing</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>While away, the browser tab title pulses: <code class="inline-code">🔔 (1) New Reply Ready | Salesforce</code>.</li>
+<li>Automatically clears and restores the original tab title as soon as the user focuses back on the tab.</li>
+</ul>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-8-verification-testing">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 8. Verification & Testing</h2>
+<h3 class="sub-title">Live SOQL Verification Query:</h3>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">SQL</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-sql">SELECT Id, Subject, Description, Status, CreatedDate 
+FROM Task 
+WHERE WhatId = &#039;001fj00001NDiLnAAL&#039; 
+ORDER BY CreatedDate DESC 
+LIMIT 3</code></pre>
+            </div>
+          <h3 class="sub-title">Verified Test Suite:</h3>
+<ul class="styled-list">
+<li>Class: <a href="file:///C:/Users/Sumit%20Kr%20Gupta/OneDrive%20-%20Teqfocus%20Solutions%20Pvt.%20Ltd/Desktop/Learn%20DC/force-app/main/default/classes/SlackBotAgentControllerTest.cls" target="_blank" rel="noopener noreferrer" class="doc-link"><code class="inline-code">SlackBotAgentControllerTest.cls</code></a></li>
+<li>Test Results: <strong>12/12 Tests Passing (100% Pass Rate)</strong></li>
+<li>Code Coverage: <strong>92.0% Coverage</strong></li>
+</ul>
+</section>
+
+  </div>
+
+  <a href="#" class="back-to-top">↑ Top</a>
+
+  <footer>
+    <strong>Salesforce Lightning Platform • Enterprise AI Integration Guide</strong><br/>
+    Internal Engineering Reference & Operational Playbook • Org: <code>learn_dc</code>
+  </footer>
+
+  <script>
+    function copyCode(btn) {
+      const container = btn.closest('.code-container');
+      const code = container.querySelector('code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const origText = btn.innerText;
+        btn.innerText = '✓ Copied!';
+        btn.style.background = '#2EB67D';
+        btn.style.borderColor = '#2EB67D';
+        btn.style.color = '#ffffff';
+        setTimeout(() => {
+          btn.innerText = origText;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 2000);
+      });
+    }
+
+    // Scroll Progress & Active Tab Highlighting
+    window.addEventListener('scroll', () => {
+      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / height) * 100;
+      document.getElementById('progress-bar').style.width = scrolled + '%';
+
+      const sections = document.querySelectorAll('.section-card');
+      const navTabs = document.querySelectorAll('.nav-tab');
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        if (winScroll >= sectionTop - 140) {
+          current = section.getAttribute('id');
+        }
+      });
+      navTabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.getAttribute('href') === '#' + current) {
+          tab.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+  

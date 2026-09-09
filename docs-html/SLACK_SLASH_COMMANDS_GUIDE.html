@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Guide &amp; Blueprint: Implementing Slack Slash Commands (`/account-brief` &amp; `/summarize-thread`) | Salesforce Enterprise Architecture</title>
+  <!-- Mermaid JS for Dynamic Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      securityLevel: 'loose',
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+      sequence: { useMaxWidth: true, showSequenceNumbers: true }
+    });
+  </script>
+  <style>
+    :root {
+      --sf-blue: #0176D3;
+      --sf-dark-blue: #0b5cab;
+      --sf-navy: #032d60;
+      --slack-aubergine: #4A154B;
+      --slack-green: #2EB67D;
+      --slack-yellow: #ECB22E;
+      --slack-red: #E01E5A;
+      --slack-blue: #36C5F0;
+      --gcp-blue: #4285F4;
+      --snowflake-blue: #29B5E8;
+      --gmail-red: #EA4335;
+      --cal-blue: #1A73E8;
+      --bg-light: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --border-color: #e2e8f0;
+      --code-bg: #1e1e24;
+      --radius-lg: 12px;
+      --radius-md: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-light);
+      color: var(--text-main);
+      line-height: 1.68;
+      padding-bottom: 80px;
+    }
+
+    /* Scroll progress indicator */
+    #progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--sf-blue), var(--slack-green), var(--slack-blue));
+      width: 0%;
+      z-index: 999;
+      transition: width 0.1s ease;
+    }
+
+    /* Hero Header */
+    header.hero {
+      background: linear-gradient(135deg, var(--sf-navy) 0%, #0f172a 45%, var(--slack-aubergine) 100%);
+      color: white;
+      padding: 48px 24px;
+      text-align: center;
+      border-bottom: 4px solid var(--slack-green);
+      position: relative;
+    }
+
+    header.hero h1 {
+      font-size: 2.3rem;
+      margin-bottom: 12px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    header.hero p {
+      font-size: 1.1rem;
+      color: #cbd5e1;
+      max-width: 850px;
+      margin: 0 auto 20px auto;
+    }
+
+    .badge-bar {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f1f5f9;
+    }
+
+    .badge.success {
+      background: rgba(46, 182, 125, 0.25);
+      border-color: #2EB67D;
+      color: #86efac;
+    }
+
+    /* Layout Container */
+    .container {
+      max-width: 1220px;
+      margin: 28px auto;
+      padding: 0 20px;
+    }
+
+    /* Sticky Navigation Bar with Search */
+    .nav-wrapper {
+      position: sticky;
+      top: 12px;
+      z-index: 100;
+      margin-bottom: 28px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      padding: 6px;
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      scrollbar-width: thin;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .nav-tab {
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      color: var(--text-sub);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .nav-tab:hover {
+      background: #f1f5f9;
+      color: var(--sf-blue);
+    }
+
+    .nav-tab.active {
+      background: var(--sf-blue);
+      color: #ffffff;
+    }
+
+    /* Section Cards */
+    .section-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    h2.section-title {
+      font-size: 1.55rem;
+      margin-bottom: 20px;
+      color: var(--sf-navy);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 12px;
+    }
+
+    .title-badge {
+      font-size: 0.72rem;
+      font-weight: 800;
+      background: #e0f2fe;
+      color: var(--sf-blue);
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    h3.sub-title {
+      font-size: 1.25rem;
+      margin: 24px 0 12px 0;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h4.sub-sub-title {
+      font-size: 1.05rem;
+      margin: 18px 0 10px 0;
+      color: #1e293b;
+    }
+
+    p {
+      color: #334155;
+      font-size: 0.98rem;
+      margin-bottom: 14px;
+    }
+
+    /* Lists */
+    ul.styled-list, ol.styled-ordered-list {
+      padding-left: 24px;
+      margin-bottom: 18px;
+    }
+
+    li {
+      color: #334155;
+      font-size: 0.96rem;
+      margin-bottom: 8px;
+    }
+
+    li.task-item {
+      list-style-type: none;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    li.task-item.checked {
+      color: #059669;
+      font-weight: 500;
+    }
+
+    .check-icon {
+      font-weight: bold;
+      color: #10b981;
+    }
+
+    /* Visual Illustration Card */
+    .visual-illustration-card {
+      background: #0f172a;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin: 24px 0 32px 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      border: 1px solid #334155;
+    }
+
+    .illustration-header {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .illustration-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: #0284c7;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .illustration-header h3 {
+      font-size: 1.2rem;
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    /* Diagram Box (Mermaid) */
+    .diagram-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin: 22px 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+
+    .diagram-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    /* Step Card */
+    .step-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 18px 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      border-left: 4px solid var(--sf-blue);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .step-badge {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #ffffff;
+      background: var(--sf-blue);
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .step-card h4 {
+      font-size: 1.15rem;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    /* Code Container & Syntax Styling */
+    .code-container {
+      background: var(--code-bg);
+      border-radius: var(--radius-md);
+      margin: 18px 0;
+      overflow: hidden;
+      border: 1px solid #334155;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #141418;
+      padding: 8px 16px;
+      border-bottom: 1px solid #2d2d35;
+    }
+
+    .lang-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+    }
+
+    .copy-btn {
+      background: #282832;
+      color: #cbd5e1;
+      border: 1px solid #444;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: var(--sf-blue);
+      color: #ffffff;
+      border-color: var(--sf-blue);
+    }
+
+    pre {
+      padding: 16px;
+      overflow-x: auto;
+      color: #f8f8f2;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    }
+
+    .inline-code {
+      background: #edf2f7;
+      color: #c026d3;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      border: 1px solid #e2e8f0;
+      font-weight: 600;
+    }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      text-align: left;
+      font-size: 0.94rem;
+    }
+
+    .styled-table th {
+      background: #f1f5f9;
+      color: var(--sf-navy);
+      font-weight: 700;
+      padding: 12px 16px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+
+    .styled-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+
+    .styled-table tr:hover {
+      background: #f8fafc;
+    }
+
+    /* Callout Boxes */
+    .callout-box {
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      margin: 20px 0;
+      border-left: 4px solid;
+    }
+
+    .callout-box.info {
+      background: #f0f9ff;
+      border-color: #0284c7;
+    }
+    .callout-box.info .callout-title { color: #0369a1; }
+
+    .callout-box.tip {
+      background: #fdf4ff;
+      border-color: #c084fc;
+    }
+    .callout-box.tip .callout-title { color: #7e22ce; }
+
+    .callout-box.warning {
+      background: #fffbeb;
+      border-color: #f59e0b;
+    }
+    .callout-box.warning .callout-title { color: #b45309; }
+
+    .callout-box.important {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+    .callout-box.important .callout-title { color: #1d4ed8; }
+
+    .callout-box.caution {
+      background: #fef2f2;
+      border-color: #ef4444;
+    }
+    .callout-box.caution .callout-title { color: #b91c1c; }
+
+    .callout-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .callout-body {
+      color: #334155;
+      font-size: 0.95rem;
+    }
+
+    hr.section-divider {
+      border: 0;
+      height: 1px;
+      background: #e2e8f0;
+      margin: 32px 0;
+    }
+
+    /* Image Container */
+    .doc-img-container {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .doc-img {
+      max-width: 100%;
+      border-radius: var(--radius-md);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border: 1px solid var(--border-color);
+    }
+    .img-caption {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    /* Back to top button */
+    .back-to-top {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--sf-blue);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 24px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(1, 118, 211, 0.4);
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      z-index: 99;
+    }
+
+    .back-to-top:hover {
+      background: var(--sf-dark-blue);
+      transform: translateY(-2px);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 32px 20px;
+      color: #64748b;
+      font-size: 0.88rem;
+      border-top: 1px solid var(--border-color);
+      background: #ffffff;
+      margin-top: 48px;
+    }
+
+    @media print {
+      .nav-wrapper, .back-to-top, .copy-btn, #progress-bar { display: none !important; }
+      .section-card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div id="progress-bar"></div>
+
+  <!-- Hero Header -->
+  <header class="hero">
+    <h1>Complete Guide &amp; Blueprint: Implementing Slack Slash Commands (`/account-brief` &amp; `/summarize-thread`)</h1>
+    <p>Enterprise Technical Documentation &amp; Operational Reference</p>
+    <div class="badge-bar">
+      <span class="badge success">Production Ready</span>
+      <span class="badge ">Salesforce Lightning</span>
+      <span class="badge ">Enterprise Architecture</span>
+      <span class="badge ">Complete Implementation</span>
+      <span class="badge ">Slack Enterprise</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Sticky Navigation Tabs -->
+    <div class="nav-wrapper">
+      <nav class="nav-tabs">
+        <a href="#sec-1-executive-overview-concept" class="nav-tab">Executive Overview &amp; Concept</a>
+        <a href="#sec-2-end-to-end-architectural-flow-socket-mode" class="nav-tab">End-to-End Architectural Flow (Socket Mode)</a>
+        <a href="#sec-3-deep-dive-into-the-2-slash-commands" class="nav-tab">Deep Dive into the 2 Slash Commands</a>
+        <a href="#sec-4-step-by-step-implementation-guide" class="nav-tab">Step-by-Step Implementation Guide</a>
+        <a href="#sec-5-golden-rules-best-practices-for-slack-slash-commands" class="nav-tab">Golden Rules &amp; Best Practices for Slack Slash Commands</a>
+        <a href="#sec-6-how-to-add-new-commands-in-the-future-reusable-template" class="nav-tab">How to Add New Commands in the Future (Reusable Template)</a>
+      </nav>
+    </div>
+
+    <!-- Document Content Sections -->
+    <section class="section-card" id="sec-1-executive-overview-concept">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 1. Executive Overview & Concept</h2>
+
+    <div class="visual-illustration-card">
+      <div class="illustration-header">
+        <span class="illustration-tag">Slack Desktop & Mobile User Interface</span>
+        <h3>Interactive Slack Slash Command Execution & Rich Block Kit Dossier Cards</h3>
+      </div>
+      <svg viewBox="0 0 960 360" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background:#1A1D21; border-radius:12px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+        <!-- Slack Left Sidebar -->
+        <rect x="30" y="30" width="200" height="300" rx="8" fill="#3F0E40"/>
+        <text x="48" y="60" fill="#ffffff" font-size="14" font-weight="bold">Teqfocus Workspace</text>
+        <circle cx="54" cy="90" r="5" fill="#2BAC76"/>
+        <text x="68" y="94" fill="#ffffff" font-size="12">Summo CSM</text>
+
+        <text x="48" y="130" fill="#AB9BAE" font-size="11" font-weight="bold">DIRECT MESSAGES</text>
+        <rect x="40" y="142" width="180" height="28" rx="4" fill="#1164A3"/>
+        <circle cx="54" cy="156" r="4" fill="#2BAC76"/>
+        <text x="68" y="160" fill="#ffffff" font-size="12" font-weight="bold">Test Agent App</text>
+
+        <text x="48" y="196" fill="#AB9BAE" font-size="11" font-weight="bold">CHANNELS</text>
+        <text x="48" y="220" fill="#AB9BAE" font-size="12"># csm-customer-alerts</text>
+        <text x="48" y="244" fill="#AB9BAE" font-size="12"># account-reviews</text>
+
+        <!-- Slack Chat Main View -->
+        <g transform="translate(250, 30)">
+          <rect x="0" y="0" width="680" height="300" rx="8" fill="#222529"/>
+          
+          <!-- Slack Header -->
+          <rect x="0" y="0" width="680" height="42" rx="8" fill="#1A1D21"/>
+          <text x="20" y="26" fill="#ffffff" font-size="14" font-weight="bold">💬 Direct Message • Test Agent App (Bot)</text>
+
+          <!-- User Invokes Command -->
+          <text x="20" y="70" fill="#ECB22E" font-size="12" font-weight="bold">Summo CSM</text>
+          <text x="110" y="70" fill="#616061" font-size="11">11:02 AM</text>
+          <rect x="20" y="80" width="240" height="28" rx="4" fill="#2C3136"/>
+          <text x="32" y="98" fill="#E01E5A" font-size="12" font-family="monospace">/account-brief Edge Communications</text>
+
+          <!-- Ephemeral Acknowledgment Pill -->
+          <rect x="20" y="118" width="310" height="24" rx="12" fill="#1264A3" fill-opacity="0.3" stroke="#1264A3"/>
+          <text x="32" y="134" fill="#38bdf8" font-size="11">⚡ Only visible to you: Generating 360° brief...</text>
+
+          <!-- Slack Block Kit Card Response -->
+          <rect x="20" y="152" width="640" height="135" rx="6" fill="#1A1D21" stroke="#383F45"/>
+          <rect x="20" y="152" width="6" height="135" rx="3" fill="#0176D3"/>
+          
+          <!-- Card Title & Metadata -->
+          <text x="36" y="174" fill="#ffffff" font-size="13" font-weight="bold">🏢 360° Executive Briefing: Edge Communications</text>
+          <text x="36" y="194" fill="#2BAC76" font-size="11" font-weight="bold">Industry: Telecommunications | SLA: Enterprise Platinum | Health Score: 88/100</text>
+          
+          <!-- Contacts -->
+          <text x="36" y="214" fill="#D1D2D3" font-size="11">👤 Primary Contact: Rose Gonzalez (VP Operations) • rose@edge.com</text>
+          
+          <!-- AI Summary -->
+          <text x="36" y="234" fill="#ECB22E" font-size="11" font-weight="bold">🤖 Gemini 3.6 Flash Intelligence:</text>
+          <text x="36" y="250" fill="#D1D2D3" font-size="10">Active renewal conversation with client. Confirmed SLA requirements met for last 4 quarters.</text>
+          <text x="36" y="266" fill="#2BAC76" font-size="10">Action: Calendar meeting confirmed on Google Calendar for next Tuesday.</text>
+        </g>
+      </svg>
+    </div>
+  
+<p>This document is your comprehensive architectural and implementation reference for creating <strong>Slack Slash Commands</strong> for the <strong>Google AI Studio & Salesforce Agent (<code class="inline-code">slack-gemini-agent</code>)</strong>.</p>
+<p>Slash commands allow Customer Success Managers (CSMs), Account Executives (AEs), and Support Engineers to invoke specific CRM and AI capabilities instantly from <strong>any Slack channel, private group, or direct message</strong> without having to mention (<code class="inline-code">@Test Agent App</code>) or type out verbose conversational prompts.</p>
+<h3 class="sub-title">The Two Chosen Slash Commands:</h3>
+<ol class="styled-ordered-list">
+<li><strong><code class="inline-code">/account-brief [Account Name]</code></strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><strong>Purpose</strong>: Provides a 1-shot <strong>360° Executive Briefing</strong> for an Account before a customer meeting.</li>
+<li><strong>Capabilities</strong>: Fetches live CRM vitals (Industry, CSM Email, Primary Contact & Title) and the latest customer email intelligence summary with action items in a single, executive Slack Block Kit card.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong><code class="inline-code">/summarize-thread [Thread ID]</code></strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><strong>Purpose</strong>: Performs <strong>dynamic Gemini AI summarization</strong> of any specific customer email thread.</li>
+<li><strong>Capabilities</strong>: Analyzes the complete chronological email exchange for that thread, extracting the <strong>Executive Summary</strong>, <strong>Key Discussion Points</strong>, and <strong>Pending Action Items</strong>.</li>
+</ul>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-2-end-to-end-architectural-flow-socket-mode">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 2. End-to-End Architectural Flow (Socket Mode)</h2>
+<p>Because your Slack App is configured with <strong>Socket Mode</strong>, slash commands do <strong>NOT</strong> require setting up public HTTP webhooks, ngrok URLs, or opening firewall ports. Slack delivers the command event securely across the established persistent WebSocket connection!</p>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor CSM as CSM / Slack User
+    participant Slack as Slack Client (Desktop/Mobile)
+    participant Bolt as Slack Bolt App (Socket Mode)
+    participant Gemini as Google AI Studio (Gemini 3.6 Flash)
+    participant MCP as LearnDC MCP Server (Salesforce)
+
+    CSM->>Slack: Types: "/account-brief Edge Communications"
+    Slack->>Bolt: WebSocket Event: command('/account-brief')
+    
+    rect rgb(235, 245, 255)
+        Note over Bolt,Slack: CRITICAL: Immediate Acknowledgment (3-Second Rule)
+        Bolt-->>Slack: await ack() (Prevents Slack "operation_timeout" error)
+        Bolt->>Slack: respond("🔍 Generating 360° brief for Edge Communications...")
+    end
+
+    Bolt->>MCP: 1. executeInvocableAction('LearnDCMCPAccountAction', { accountIdentifier: 'Edge Communications' })
+    MCP-->>Bolt: Returns Account Vitals, CSM Email, Contacts
+    
+    Bolt->>MCP: 2. executeInvocableAction('LearnDCMCPThreadAction', { accountIdentifier: 'Edge Communications' })
+    MCP-->>Bolt: Returns Latest Synced Email Thread Intelligence
+
+    Bolt->>Gemini: 3. Synthesize & Format Executive Highlights (if needed)
+    Gemini-->>Bolt: Formatted Takeaways
+
+    Bolt->>Slack: respond({ blocks: [...], replace_original: true })
+    Slack-->>CSM: Renders Executive Dossier with Action Buttons: [📅 Schedule Meeting] [🔗 Open in Salesforce]
+              </div>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-3-deep-dive-into-the-2-slash-commands">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 3. Deep Dive into the 2 Slash Commands</h2>
+<h3 class="sub-title">Command 1: <code class="inline-code">/account-brief [Account Name]</code></h3>
+<h4 class="sub-sub-title">A. User Experience & Scenarios</h4>
+<ul class="styled-list">
+<li><strong>Syntax</strong>: <code class="inline-code">/account-brief &lt;Account Name&gt;</code></li>
+<li><strong>Example</strong>: <code class="inline-code">/account-brief Edge Communications</code></li>
+<li><strong>Handling No Argument</strong>: If user types just <code class="inline-code">/account-brief</code>, the bot responds privately (<em>ephemeral</em>):</li>
+</ul>
+<p>  <code class="inline-code">⚠️ Please provide an account name. Example: /account-brief Edge Communications</code></p>
+<ul class="styled-list">
+<li><strong>Handling Account Not Found</strong>: Returns a formal enterprise failure reason:</li>
+</ul>
+<p>  <code class="inline-code">I am unable to generate an account brief because no Account matching &quot;Acme Unknown&quot; was found in Salesforce. Please verify the account name.</code></p>
+<h4 class="sub-sub-title">B. Visual Block Kit Layout</h4>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">MARKDOWN</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-markdown">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ 🏢 ACCOUNT EXECUTIVE BRIEF: Edge Communications            ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ • Industry: Electronics                                      ┃
+┃ • CSM Assigned: skgsummo5@gmail.com                         ┃
+┃ • Primary Contact: Rose Gonzalez (SVP, Procurement)          ┃
+┃ • Email: rose@edge.com                                      ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ 📬 LATEST CUSTOMER COMMUNICATION (Thread copilot-thread-123) ┃
+┃                                                             ┃
+┃ Executive Summary:                                          ┃
+┃ Quarterly check-in on platform adoption. Renewal contract   ┃
+┃ review scheduled for Q4.                                    ┃
+┃                                                             ┃
+┃ Action Items:                                               ┃
+┃ • Schedule procurement alignment meeting                    ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ [ 📅 Schedule Review Meeting ]   [ 🔗 Open in Salesforce ]  ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛</code></pre>
+            </div>
+          <hr class="section-divider"/>
+<h3 class="sub-title">Command 2: <code class="inline-code">/summarize-thread [Thread ID]</code></h3>
+<h4 class="sub-sub-title">A. User Experience & Scenarios</h4>
+<ul class="styled-list">
+<li><strong>Syntax</strong>: <code class="inline-code">/summarize-thread &lt;Thread ID&gt;</code></li>
+<li><strong>Example</strong>: <code class="inline-code">/summarize-thread 18f52b618a8039d9</code></li>
+<li><strong>Handling No Argument</strong>:</li>
+</ul>
+<p>  <code class="inline-code">⚠️ Please provide a Gmail Thread ID. Example: /summarize-thread 18f52b618a8039d9</code></p>
+<ul class="styled-list">
+<li><strong>Handling Thread Not Found</strong>:</li>
+</ul>
+<p>  <code class="inline-code">I am unable to complete this request because no email messages or records were found in Salesforce for Thread ID &quot;18f9999999999999&quot;. Please verify the Thread ID or ensure email synchronization has completed.</code></p>
+<h4 class="sub-sub-title">B. Visual Block Kit Layout</h4>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">MARKDOWN</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-markdown">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ ⚡ GEMINI AI THREAD SUMMARY: 18f52b618a8039d9               ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ • Model: Gemini 3.6 Flash   • Messages Analyzed: 4          ┃
+┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫
+┃ 📝 Executive Summary:                                        ┃
+┃ The customer raised an inquiry regarding license expansion. ┃
+┃ The pricing proposal was reviewed and approved by finance.  ┃
+┃                                                             ┃
+┃ 💡 Key Discussion Points:                                    ┃
+┃ • 50 additional licenses requested for the analytics team   ┃
+┃ • Pricing tier confirmed under existing enterprise addendum ┃
+┃                                                             ┃
+┃ ✅ Action Items:                                            ┃
+┃ • Send signature link to procurement lead (Rose Gonzalez)   ┃
+┃ • Confirm provisioning date with technical support          ┃
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-4-step-by-step-implementation-guide">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 4. Step-by-Step Implementation Guide</h2>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 1</span>
+                <h4>Register Commands in Slack App Dashboard</h4>
+              </div>
+          <p>To enable slash commands in your Slack workspace:</p>
+<ol class="styled-ordered-list">
+<li>Open your browser and navigate to <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" class="doc-link">https://api.slack.com/apps</a>.</li>
+<li>Select your application: <strong><code class="inline-code">Test Agent App</code></strong>.</li>
+<li>In the left navigation sidebar under <strong>Features</strong>, click <strong>Slash Commands</strong>.</li>
+<li>Click the <strong>Create New Command</strong> button.</li>
+</ol>
+<h4 class="sub-sub-title">Setting up <code class="inline-code">/account-brief</code>:</h4>
+<ul class="styled-list">
+<li><strong>Command</strong>: <code class="inline-code">/account-brief</code></li>
+<li><strong>Request URL</strong>: <em>(Leave disabled or blank — Socket Mode handles this automatically!)</em></li>
+<li><strong>Short Description</strong>: <code class="inline-code">Get 360° Account intelligence &amp; customer email summary</code></li>
+<li><strong>Usage Hint</strong>: <code class="inline-code">[Account Name]</code></li>
+<li>Click <strong>Save</strong>.</li>
+</ul>
+<h4 class="sub-sub-title">Setting up <code class="inline-code">/summarize-thread</code>:</h4>
+<ul class="styled-list">
+<li>Click <strong>Create New Command</strong> again.</li>
+<li><strong>Command</strong>: <code class="inline-code">/summarize-thread</code></li>
+<li><strong>Short Description</strong>: <code class="inline-code">Dynamically summarize customer email thread with Gemini</code></li>
+<li><strong>Usage Hint</strong>: <code class="inline-code">[Thread ID]</code></li>
+<li>Click <strong>Save</strong>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li>In the left sidebar under <strong>Settings</strong>, click <strong>Install App</strong>.</li>
+<li>Click <strong>Reinstall to Workspace</strong> (this grants the <code class="inline-code">commands</code> OAuth scope to your bot token <code class="inline-code">xoxb-...</code>).</li>
+</ol>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 2</span>
+                <h4>Implementation Code (<code class="inline-code">src/slack/commands.ts</code>)</h4>
+              </div>
+          <p>Create a dedicated command handler module in your Node.js application:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TYPESCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-typescript">import { App } from &#039;@slack/bolt&#039;;
+import { salesforceMcpClient } from &#039;../mcp/salesforceMcpClient.js&#039;;
+
+export function registerSlashCommands(app: App): void {
+
+  // ===========================================================================
+  // 1. /account-brief [Account Name]
+  // ===========================================================================
+  app.command(&#039;/account-brief&#039;, async ({ command, ack, respond }) =&gt; {
+    // 1. MUST acknowledge within 3000ms
+    await ack();
+
+    const accountName = (command.text || &#039;&#039;).trim();
+    if (!accountName) {
+      await respond({
+        response_type: &#039;ephemeral&#039;,
+        text: &#039;⚠️ *Usage*: `/account-brief [Account Name]`\n*Example*: `/account-brief Edge Communications`&#039;,
+      });
+      return;
+    }
+
+    // 2. Initial thinking response (replaces later)
+    await respond({
+      response_type: &#039;ephemeral&#039;,
+      text: `🔍 Fetching 360° executive brief for *${accountName}* from LearnDC MCP Server...`,
+    });
+
+    try {
+      // 3. Query Account details from Salesforce MCP
+      const accResults = await salesforceMcpClient.executeInvocableAction(&#039;LearnDCMCPAccountAction&#039;, {
+        accountIdentifier: accountName,
+      });
+
+      if (!accResults || accResults.length === 0 || !accResults[0].isFound) {
+        await respond({
+          response_type: &#039;ephemeral&#039;,
+          text: `I am unable to generate an account brief because no Account matching &quot;${accountName}&quot; was found in Salesforce. Please verify the account record.`,
+        });
+        return;
+      }
+
+      const acc = accResults[0];
+
+      // 4. Query Latest Customer Thread Summary
+      let threadInfo = &#039;• *Status*: No recent customer emails synced for this account.&#039;;
+      const threadResults = await salesforceMcpClient.executeInvocableAction(&#039;LearnDCMCPThreadAction&#039;, {
+        accountIdentifier: acc.accountName,
+      });
+
+      if (threadResults &amp;&amp; threadResults.length &gt; 0 &amp;&amp; threadResults[0].isFound) {
+        const th = threadResults[0];
+        threadInfo = `*Executive Summary:*\n${th.executiveSummary || &#039;N/A&#039;}\n\n*Action Items:*\n${th.actionItems || &#039;None pending&#039;}`;
+      }
+
+      // 5. Render Rich Slack Block Kit Response
+      await respond({
+        response_type: &#039;in_channel&#039;, // Visible to channel or change to &#039;ephemeral&#039; for private
+        blocks: [
+          {
+            type: &#039;header&#039;,
+            text: {
+              type: &#039;plain_text&#039;,
+              text: `🏢 Executive Brief: ${acc.accountName}`,
+              emoji: true,
+            },
+          },
+          {
+            type: &#039;section&#039;,
+            fields: [
+              { type: &#039;mrkdwn&#039;, text: `*Industry:*\n${acc.industry || &#039;Technology&#039;}` },
+              { type: &#039;mrkdwn&#039;, text: `*CSM Email:*\n${acc.csmEmail || &#039;None assigned&#039;}` },
+              { type: &#039;mrkdwn&#039;, text: `*Primary Contact:*\n${acc.primaryContactName || &#039;None&#039;}` },
+              { type: &#039;mrkdwn&#039;, text: `*Contact Email:*\n${acc.primaryContactEmail || &#039;None&#039;}` },
+            ],
+          },
+          { type: &#039;divider&#039; },
+          {
+            type: &#039;section&#039;,
+            text: {
+              type: &#039;mrkdwn&#039;,
+              text: `*📬 Recent Customer Intelligence:*\n${threadInfo}`,
+            },
+          },
+          {
+            type: &#039;context&#039;,
+            elements: [
+              {
+                type: &#039;mrkdwn&#039;,
+                text: `Retrieved live from *LearnDC Agent MCP Server* • Account ID: \`${acc.accountId}\``,
+              },
+            ],
+          },
+        ],
+      });
+
+    } catch (err: any) {
+      await respond({
+        response_type: &#039;ephemeral&#039;,
+        text: `I am unable to complete this request because an error occurred: ${err.message}`,
+      });
+    }
+  });
+
+  // ===========================================================================
+  // 2. /summarize-thread [Thread ID]
+  // ===========================================================================
+  app.command(&#039;/summarize-thread&#039;, async ({ command, ack, respond }) =&gt; {
+    // 1. MUST acknowledge within 3000ms
+    await ack();
+
+    const threadId = (command.text || &#039;&#039;).trim();
+    if (!threadId) {
+      await respond({
+        response_type: &#039;ephemeral&#039;,
+        text: &#039;⚠️ *Usage*: `/summarize-thread [Thread ID]`\n*Example*: `/summarize-thread 18f52b618a8039d9`&#039;,
+      });
+      return;
+    }
+
+    // 2. Immediate feedback
+    await respond({
+      response_type: &#039;ephemeral&#039;,
+      text: `⚡ Running dynamic Gemini AI summarization on Thread \`${threadId}\`...`,
+    });
+
+    try {
+      // 3. Call LearnDCMCPThreadAction with dynamic threadId
+      const results = await salesforceMcpClient.executeInvocableAction(&#039;LearnDCMCPThreadAction&#039;, {
+        threadId: threadId,
+      });
+
+      if (!results || results.length === 0 || !results[0].isFound) {
+        await respond({
+          response_type: &#039;ephemeral&#039;,
+          text: `I am unable to complete this request because no email messages or records were found in Salesforce for Thread ID &quot;${threadId}&quot;. Please verify the Thread ID or ensure email synchronization has completed.`,
+        });
+        return;
+      }
+
+      const th = results[0];
+
+      // 4. Render Dynamic Summary Blocks
+      await respond({
+        response_type: &#039;in_channel&#039;,
+        blocks: [
+          {
+            type: &#039;header&#039;,
+            text: {
+              type: &#039;plain_text&#039;,
+              text: `⚡ Gemini AI Thread Summary: ${th.threadId}`,
+              emoji: true,
+            },
+          },
+          {
+            type: &#039;section&#039;,
+            text: {
+              type: &#039;mrkdwn&#039;,
+              text: `*Executive Summary:*\n${th.executiveSummary || &#039;No summary available.&#039;}`,
+            },
+          },
+          {
+            type: &#039;section&#039;,
+            text: {
+              type: &#039;mrkdwn&#039;,
+              text: `*Key Discussion Points:*\n${th.keyPoints || &#039;None identified.&#039;}`,
+            },
+          },
+          {
+            type: &#039;section&#039;,
+            text: {
+              type: &#039;mrkdwn&#039;,
+              text: `*Action Items:*\n${th.actionItems || &#039;None pending.&#039;}`,
+            },
+          },
+          {
+            type: &#039;context&#039;,
+            elements: [
+              {
+                type: &#039;mrkdwn&#039;,
+                text: `Dynamic synthesis via Google Gemini • Messages analyzed: ${th.messageCount || 1}`,
+              },
+            ],
+          },
+        ],
+      });
+
+    } catch (err: any) {
+      await respond({
+        response_type: &#039;ephemeral&#039;,
+        text: `I am unable to complete this request because an error occurred: ${err.message}`,
+      });
+    }
+  });
+}</code></pre>
+            </div>
+          <hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 3</span>
+                <h4>Register in <code class="inline-code">src/index.ts</code></h4>
+              </div>
+          <p>In <code class="inline-code">slack-gemini-agent/src/index.ts</code>, simply import and register the command handlers before starting the app:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TYPESCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-typescript">import { registerSlashCommands } from &#039;./slack/commands.js&#039;;
+
+// ...
+registerSlackHandlers(app);
+registerSlashCommands(app); // Attach /account-brief and /summarize-thread
+// ...</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-5-golden-rules-best-practices-for-slack-slash-commands">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 5. Golden Rules & Best Practices for Slack Slash Commands</h2>
+<h3 class="sub-title">Rule 1: The 3-Second Acknowledgment Rule (<code class="inline-code">await ack()</code>)</h3>
+<p>Slack requires your app to acknowledge receipt of a slash command within <strong>3000 milliseconds (3 seconds)</strong>.</p>
+<ul class="styled-list">
+<li><strong>Always</strong> call <code class="inline-code">await ack()</code> on the very first line of the command handler.</li>
+<li>Then, if your AI or Salesforce callout takes 2–4 seconds, use <code class="inline-code">await respond(...)</code> to send updates or replace the loading state.</li>
+</ul>
+<h3 class="sub-title">Rule 2: Ephemeral vs. In-Channel Responses</h3>
+<ul class="styled-list">
+<li><strong><code class="inline-code">response_type: &#039;ephemeral&#039;</code></strong>: The message is visible <strong>only to the user</strong> who typed the command. Best for error messages, help hints, or sensitive account lookups.</li>
+<li><strong><code class="inline-code">response_type: &#039;in_channel&#039;</code></strong>: The message is posted to the whole channel for everyone to see. Best for shared meeting prep or team summaries.</li>
+</ul>
+<h3 class="sub-title">Rule 3: Graceful Formal Failure Explanations</h3>
+<p>Never let a command fail silently or return a generic crash error. Follow the standardized format:</p>
+
+        <div class="callout-box info">
+          <div class="callout-title">ℹ️ Note</div>
+          <div class="callout-body"><code class="inline-code">&quot;I am unable to [do task] because [specific reason]. [Suggested remedy].&quot;</code></div>
+        </div>
+      <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-6-how-to-add-new-commands-in-the-future-reusable-template">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 6. How to Add New Commands in the Future (Reusable Template)</h2>
+<p>Whenever you have a new requirement in the future, follow this 3-step blueprint:</p>
+<ol class="styled-ordered-list">
+<li><strong>Add Command in Slack Dashboard</strong>: Go to <code class="inline-code">api.slack.com/apps</code> ➔ <strong>Slash Commands</strong> ➔ Add <code class="inline-code">/my-new-command</code>.</li>
+<li><strong>Add Handler in Code</strong>:</li>
+</ol>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">TYPESCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-typescript">   app.command(&#039;/my-new-command&#039;, async ({ command, ack, respond }) =&gt; {
+     await ack(); // 1. Acknowledge
+     const arg = command.text.trim();
+     
+     // 2. Validate input
+     if (!arg) {
+       await respond({ response_type: &#039;ephemeral&#039;, text: &#039;Usage hint...&#039; });
+       return;
+     }
+
+     // 3. Execute MCP / Gemini
+     const result = await salesforceMcpClient.executeInvocableAction(&#039;MyAction&#039;, { param: arg });
+
+     // 4. Respond
+     await respond({ text: &#039;Result...&#039; });
+   });</code></pre>
+            </div>
+          <ol class="styled-ordered-list">
+<li><strong>Rebuild & Restart Container</strong>: <code class="inline-code">npm run build &amp;&amp; npm run container:restart</code>.</li>
+</ol>
+</section>
+
+  </div>
+
+  <a href="#" class="back-to-top">↑ Top</a>
+
+  <footer>
+    <strong>Salesforce Lightning Platform • Enterprise AI Integration Guide</strong><br/>
+    Internal Engineering Reference & Operational Playbook • Org: <code>learn_dc</code>
+  </footer>
+
+  <script>
+    function copyCode(btn) {
+      const container = btn.closest('.code-container');
+      const code = container.querySelector('code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const origText = btn.innerText;
+        btn.innerText = '✓ Copied!';
+        btn.style.background = '#2EB67D';
+        btn.style.borderColor = '#2EB67D';
+        btn.style.color = '#ffffff';
+        setTimeout(() => {
+          btn.innerText = origText;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 2000);
+      });
+    }
+
+    // Scroll Progress & Active Tab Highlighting
+    window.addEventListener('scroll', () => {
+      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / height) * 100;
+      document.getElementById('progress-bar').style.width = scrolled + '%';
+
+      const sections = document.querySelectorAll('.section-card');
+      const navTabs = document.querySelectorAll('.nav-tab');
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        if (winScroll >= sectionTop - 140) {
+          current = section.getAttribute('id');
+        }
+      });
+      navTabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.getAttribute('href') === '#' + current) {
+          tab.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+  

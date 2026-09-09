@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Slack_DM_Channel_Id__c</fullName>
+    <description>Persistent 1-on-1 private Direct Message channel ID with the Slack Bot (e.g. D0BUQS5V68Z)</description>
+    <externalId>false</externalId>
+    <label>Slack DM Channel ID</label>
+    <length>30</length>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

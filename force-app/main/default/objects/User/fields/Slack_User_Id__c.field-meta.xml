@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Slack_User_Id__c</fullName>
+    <description>Persistent unique Slack User ID (e.g. U0C036Y8XC0)</description>
+    <externalId>false</externalId>
+    <label>Slack User ID</label>
+    <length>30</length>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

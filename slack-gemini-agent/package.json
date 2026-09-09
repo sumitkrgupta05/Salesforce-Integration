@@ -1,0 +1,43 @@
+{
+  "name": "slack-gemini-agent",
+  "version": "1.0.0",
+  "description": "Slack Bot integrated with Google AI Studio custom Gemini Agent",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test:agent": "tsx src/test-agent.ts",
+    "test:mcp": "tsx src/test-mcp.ts",
+    "test:snowflake": "tsx src/test-snowflake.ts",
+    "container:logs": "docker logs -f slack-gemini-agent-service",
+    "container:restart": "docker restart slack-gemini-agent-service",
+    "container:stop": "docker stop slack-gemini-agent-service",
+    "container:start": "docker start slack-gemini-agent-service",
+    "container:status": "docker ps --filter name=slack-gemini-agent-service"
+  },
+  "keywords": [
+    "slack",
+    "bolt",
+    "gemini",
+    "google-ai-studio",
+    "agent"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^2.21.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@slack/bolt": "^3.21.4",
+    "docx": "^9.7.1",
+    "dotenv": "^16.4.7",
+    "eventsource": "^5.1.1",
+    "snowflake-sdk": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "@types/snowflake-sdk": "^1.6.24",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,38 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: slack-gemini-agent
+  labels:
+    cloud.googleapis.com/location: us-central1
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "1"     # Keep 1 instance running 24/7 for WebSocket Socket Mode
+        autoscaling.knative.dev/maxScale: "2"
+        run.googleapis.com/cpu-throttling: "false" # Ensure CPU is allocated for continuous WebSocket streaming
+    spec:
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      serviceAccountName: sf-calendar-service@exalted-justice-507211-v9.iam.gserviceaccount.com
+      containers:
+      - image: gcr.io/exalted-justice-507211-v9/slack-gemini-agent:latest
+        ports:
+        - name: http1
+          containerPort: 8080
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 30

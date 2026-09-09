@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Salesforce, Slack &amp; Google AI Studio Autonomous Agent Integration | Salesforce Enterprise Architecture</title>
+  <!-- Mermaid JS for Dynamic Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      securityLevel: 'loose',
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+      sequence: { useMaxWidth: true, showSequenceNumbers: true }
+    });
+  </script>
+  <style>
+    :root {
+      --sf-blue: #0176D3;
+      --sf-dark-blue: #0b5cab;
+      --sf-navy: #032d60;
+      --slack-aubergine: #4A154B;
+      --slack-green: #2EB67D;
+      --slack-yellow: #ECB22E;
+      --slack-red: #E01E5A;
+      --slack-blue: #36C5F0;
+      --gcp-blue: #4285F4;
+      --snowflake-blue: #29B5E8;
+      --gmail-red: #EA4335;
+      --cal-blue: #1A73E8;
+      --bg-light: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --border-color: #e2e8f0;
+      --code-bg: #1e1e24;
+      --radius-lg: 12px;
+      --radius-md: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-light);
+      color: var(--text-main);
+      line-height: 1.68;
+      padding-bottom: 80px;
+    }
+
+    /* Scroll progress indicator */
+    #progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--sf-blue), var(--slack-green), var(--slack-blue));
+      width: 0%;
+      z-index: 999;
+      transition: width 0.1s ease;
+    }
+
+    /* Hero Header */
+    header.hero {
+      background: linear-gradient(135deg, var(--sf-navy) 0%, #0f172a 45%, var(--slack-aubergine) 100%);
+      color: white;
+      padding: 48px 24px;
+      text-align: center;
+      border-bottom: 4px solid var(--slack-green);
+      position: relative;
+    }
+
+    header.hero h1 {
+      font-size: 2.3rem;
+      margin-bottom: 12px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    header.hero p {
+      font-size: 1.1rem;
+      color: #cbd5e1;
+      max-width: 850px;
+      margin: 0 auto 20px auto;
+    }
+
+    .badge-bar {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f1f5f9;
+    }
+
+    .badge.success {
+      background: rgba(46, 182, 125, 0.25);
+      border-color: #2EB67D;
+      color: #86efac;
+    }
+
+    /* Layout Container */
+    .container {
+      max-width: 1220px;
+      margin: 28px auto;
+      padding: 0 20px;
+    }
+
+    /* Sticky Navigation Bar with Search */
+    .nav-wrapper {
+      position: sticky;
+      top: 12px;
+      z-index: 100;
+      margin-bottom: 28px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      padding: 6px;
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      scrollbar-width: thin;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .nav-tab {
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      color: var(--text-sub);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .nav-tab:hover {
+      background: #f1f5f9;
+      color: var(--sf-blue);
+    }
+
+    .nav-tab.active {
+      background: var(--sf-blue);
+      color: #ffffff;
+    }
+
+    /* Section Cards */
+    .section-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    h2.section-title {
+      font-size: 1.55rem;
+      margin-bottom: 20px;
+      color: var(--sf-navy);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 12px;
+    }
+
+    .title-badge {
+      font-size: 0.72rem;
+      font-weight: 800;
+      background: #e0f2fe;
+      color: var(--sf-blue);
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    h3.sub-title {
+      font-size: 1.25rem;
+      margin: 24px 0 12px 0;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h4.sub-sub-title {
+      font-size: 1.05rem;
+      margin: 18px 0 10px 0;
+      color: #1e293b;
+    }
+
+    p {
+      color: #334155;
+      font-size: 0.98rem;
+      margin-bottom: 14px;
+    }
+
+    /* Lists */
+    ul.styled-list, ol.styled-ordered-list {
+      padding-left: 24px;
+      margin-bottom: 18px;
+    }
+
+    li {
+      color: #334155;
+      font-size: 0.96rem;
+      margin-bottom: 8px;
+    }
+
+    li.task-item {
+      list-style-type: none;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    li.task-item.checked {
+      color: #059669;
+      font-weight: 500;
+    }
+
+    .check-icon {
+      font-weight: bold;
+      color: #10b981;
+    }
+
+    /* Visual Illustration Card */
+    .visual-illustration-card {
+      background: #0f172a;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin: 24px 0 32px 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      border: 1px solid #334155;
+    }
+
+    .illustration-header {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .illustration-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: #0284c7;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .illustration-header h3 {
+      font-size: 1.2rem;
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    /* Diagram Box (Mermaid) */
+    .diagram-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin: 22px 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+
+    .diagram-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    /* Step Card */
+    .step-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 18px 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      border-left: 4px solid var(--sf-blue);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .step-badge {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #ffffff;
+      background: var(--sf-blue);
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .step-card h4 {
+      font-size: 1.15rem;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    /* Code Container & Syntax Styling */
+    .code-container {
+      background: var(--code-bg);
+      border-radius: var(--radius-md);
+      margin: 18px 0;
+      overflow: hidden;
+      border: 1px solid #334155;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #141418;
+      padding: 8px 16px;
+      border-bottom: 1px solid #2d2d35;
+    }
+
+    .lang-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+    }
+
+    .copy-btn {
+      background: #282832;
+      color: #cbd5e1;
+      border: 1px solid #444;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: var(--sf-blue);
+      color: #ffffff;
+      border-color: var(--sf-blue);
+    }
+
+    pre {
+      padding: 16px;
+      overflow-x: auto;
+      color: #f8f8f2;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    }
+
+    .inline-code {
+      background: #edf2f7;
+      color: #c026d3;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      border: 1px solid #e2e8f0;
+      font-weight: 600;
+    }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      text-align: left;
+      font-size: 0.94rem;
+    }
+
+    .styled-table th {
+      background: #f1f5f9;
+      color: var(--sf-navy);
+      font-weight: 700;
+      padding: 12px 16px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+
+    .styled-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+
+    .styled-table tr:hover {
+      background: #f8fafc;
+    }
+
+    /* Callout Boxes */
+    .callout-box {
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      margin: 20px 0;
+      border-left: 4px solid;
+    }
+
+    .callout-box.info {
+      background: #f0f9ff;
+      border-color: #0284c7;
+    }
+    .callout-box.info .callout-title { color: #0369a1; }
+
+    .callout-box.tip {
+      background: #fdf4ff;
+      border-color: #c084fc;
+    }
+    .callout-box.tip .callout-title { color: #7e22ce; }
+
+    .callout-box.warning {
+      background: #fffbeb;
+      border-color: #f59e0b;
+    }
+    .callout-box.warning .callout-title { color: #b45309; }
+
+    .callout-box.important {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+    .callout-box.important .callout-title { color: #1d4ed8; }
+
+    .callout-box.caution {
+      background: #fef2f2;
+      border-color: #ef4444;
+    }
+    .callout-box.caution .callout-title { color: #b91c1c; }
+
+    .callout-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .callout-body {
+      color: #334155;
+      font-size: 0.95rem;
+    }
+
+    hr.section-divider {
+      border: 0;
+      height: 1px;
+      background: #e2e8f0;
+      margin: 32px 0;
+    }
+
+    /* Image Container */
+    .doc-img-container {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .doc-img {
+      max-width: 100%;
+      border-radius: var(--radius-md);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border: 1px solid var(--border-color);
+    }
+    .img-caption {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    /* Back to top button */
+    .back-to-top {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--sf-blue);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 24px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(1, 118, 211, 0.4);
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      z-index: 99;
+    }
+
+    .back-to-top:hover {
+      background: var(--sf-dark-blue);
+      transform: translateY(-2px);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 32px 20px;
+      color: #64748b;
+      font-size: 0.88rem;
+      border-top: 1px solid var(--border-color);
+      background: #ffffff;
+      margin-top: 48px;
+    }
+
+    @media print {
+      .nav-wrapper, .back-to-top, .copy-btn, #progress-bar { display: none !important; }
+      .section-card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div id="progress-bar"></div>
+
+  <!-- Hero Header -->
+  <header class="hero">
+    <h1>Salesforce, Slack &amp; Google AI Studio Autonomous Agent Integration</h1>
+    <p>Enterprise Technical Documentation &amp; Operational Reference</p>
+    <div class="badge-bar">
+      <span class="badge success">Production Ready</span>
+      <span class="badge ">Salesforce Lightning</span>
+      <span class="badge ">Enterprise Architecture</span>
+      <span class="badge ">Complete Implementation</span>
+      <span class="badge ">Slack Enterprise</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Sticky Navigation Tabs -->
+    <div class="nav-wrapper">
+      <nav class="nav-tabs">
+        <a href="#sec-1-executive-summary-objective" class="nav-tab">Executive Summary &amp; Objective</a>
+        <a href="#sec-2-architecture-data-flow" class="nav-tab">Architecture &amp; Data Flow</a>
+        <a href="#sec-3-step-by-step-implementation-breakdown" class="nav-tab">Step-by-Step Implementation Breakdown</a>
+        <a href="#sec-4-directory-file-structure" class="nav-tab">Directory &amp; File Structure</a>
+        <a href="#sec-5-how-to-test-and-use" class="nav-tab">How to Test and Use</a>
+        <a href="#sec-6-how-to-manage-the-24-7-container-service" class="nav-tab">How to Manage the 24/7 Container Service</a>
+        <a href="#sec-7-future-gcp-cloud-run-deployment" class="nav-tab">Future GCP Cloud Run Deployment</a>
+        <a href="#sec-8-complete-from-scratch-implementation-tutorial-zero-to-hero-guide" class="nav-tab">Complete &quot;From-Scratch&quot; Implementation Tutorial (Zero-to-Hero Guide)</a>
+        <a href="#sec-9-native-salesforce-hosted-mcp-integration-model-context-protocol" class="nav-tab">Native Salesforce-Hosted MCP Integration (Model Context Protocol)</a>
+      </nav>
+    </div>
+
+    <!-- Document Content Sections -->
+    <p>A complete, enterprise-grade technical guide and implementation documentation detailing the end-to-end integration between <strong>Slack</strong>, <strong>Google AI Studio (Gemini 3.6 Flash)</strong>, and <strong>Salesforce CRM (<code class="inline-code">learn_dc</code>)</strong>.</p>
+<hr class="section-divider"/>
+<section class="section-card" id="sec-1-executive-summary-objective">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 1. Executive Summary & Objective</h2>
+
+    <div class="visual-illustration-card">
+      <div class="illustration-header">
+        <span class="illustration-tag">Multi-Agent Cognitive Pipeline</span>
+        <h3>Google AI Studio (Gemini 3.6 Flash), Slack Socket Mode & Autonomous Tool Loop</h3>
+      </div>
+      <svg viewBox="0 0 960 360" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+        <!-- Slack Ingress -->
+        <g transform="translate(40, 40)">
+          <rect x="0" y="0" width="220" height="280" rx="10" fill="#4A154B" stroke="#c084fc" stroke-width="2"/>
+          <text x="20" y="32" fill="#ffffff" font-size="15" font-weight="bold">Slack Workspace</text>
+          <text x="20" y="50" fill="#f3e8ff" font-size="11">Socket Mode WebSocket</text>
+
+          <rect x="15" y="70" width="190" height="48" rx="6" fill="rgba(255,255,255,0.12)"/>
+          <text x="25" y="90" fill="#ffffff" font-size="11" font-weight="bold">@Gemini /account-brief</text>
+          <text x="25" y="106" fill="#e9d5ff" font-size="10">User Query in Channel / DM</text>
+
+          <rect x="15" y="130" width="190" height="50" rx="6" fill="rgba(255,255,255,0.12)"/>
+          <text x="25" y="150" fill="#ffffff" font-size="11" font-weight="bold">Thread Continuity</text>
+          <text x="25" y="166" fill="#e9d5ff" font-size="10">Locked to Slack thread_ts</text>
+
+          <rect x="15" y="195" width="190" height="60" rx="6" fill="rgba(255,255,255,0.12)"/>
+          <text x="25" y="215" fill="#ffffff" font-size="11" font-weight="bold">Block Kit UI Cards</text>
+          <text x="25" y="232" fill="#e9d5ff" font-size="10">Rich MRKDWN Formatting</text>
+          <text x="25" y="246" fill="#4ade80" font-size="9" font-weight="bold">✓ 3-Second Rule Acknowledged</text>
+        </g>
+
+        <!-- Gemini Brain & Dispatcher -->
+        <g transform="translate(300, 40)">
+          <rect x="0" y="0" width="360" height="280" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+          <rect x="0" y="0" width="360" height="38" rx="10" fill="#0369a1"/>
+          <text x="20" y="24" fill="#ffffff" font-size="14" font-weight="bold">🧠 Google AI Studio Reasoning Core</text>
+
+          <!-- Gemini Model -->
+          <rect x="18" y="55" width="324" height="65" rx="8" fill="#0f172a" stroke="#0284c7"/>
+          <text x="30" y="76" fill="#38bdf8" font-size="13" font-weight="bold">Gemini 3.6 Flash Engine</text>
+          <text x="30" y="94" fill="#cbd5e1" font-size="11">System Instructions: Autonomous CRM Copilot</text>
+          <text x="30" y="110" fill="#cbd5e1" font-size="11">Native Function Calling Protocol</text>
+
+          <!-- Autonomous Loop -->
+          <rect x="18" y="132" width="324" height="132" rx="8" fill="#0f172a" stroke="#8b5cf6"/>
+          <text x="30" y="154" fill="#c084fc" font-size="12" font-weight="bold">⚡ Function Dispatching Engine</text>
+          <text x="30" y="174" fill="#e2e8f0" font-size="11">1. Evaluates intent & selects registered tool</text>
+          <text x="30" y="192" fill="#e2e8f0" font-size="11">2. Dispatches HTTP payload to Salesforce MCP</text>
+          <text x="30" y="210" fill="#e2e8f0" font-size="11">3. Ingests raw JSON result into session history</text>
+          <text x="30" y="228" fill="#e2e8f0" font-size="11">4. Generates single synthesized response</text>
+          <text x="30" y="250" fill="#4ade80" font-size="10" font-weight="bold">✓ ZERO BRAND LEAKAGE ENFORCED</text>
+        </g>
+
+        <!-- Salesforce Data Source -->
+        <g transform="translate(700, 40)">
+          <rect x="0" y="0" width="220" height="280" rx="10" fill="#0176D3" stroke="#38bdf8" stroke-width="2"/>
+          <text x="20" y="32" fill="#ffffff" font-size="15" font-weight="bold">Salesforce CRM</text>
+          <text x="20" y="50" fill="#bfdbfe" font-size="11">Org: learn_dc</text>
+
+          <rect x="15" y="70" width="190" height="45" rx="6" fill="rgba(255,255,255,0.12)"/>
+          <text x="25" y="90" fill="#ffffff" font-size="11" font-weight="bold">Account Object</text>
+          <text x="25" y="104" fill="#dbeafe" font-size="10">CSM Email & Vitals</text>
+
+          <rect x="15" y="125" width="190" height="45" rx="6" fill="rgba(255,255,255,0.12)"/>
+          <text x="25" y="145" fill="#ffffff" font-size="11" font-weight="bold">Contact Object</text>
+          <text x="25" y="159" fill="#dbeafe" font-size="10">Stakeholder Rosters</text>
+
+          <rect x="15" y="180" width="190" height="45" rx="6" fill="rgba(255,255,255,0.12)"/>
+          <text x="25" y="200" fill="#ffffff" font-size="11" font-weight="bold">Gmail & Calendar</text>
+          <text x="25" y="214" fill="#dbeafe" font-size="10">Thread Summaries</text>
+
+          <rect x="15" y="235" width="190" height="35" rx="6" fill="rgba(255,255,255,0.12)"/>
+          <text x="25" y="255" fill="#ffffff" font-size="11" font-weight="bold">Task Activity DML</text>
+        </g>
+
+        <!-- Connectors -->
+        <path d="M 260 140 L 300 140" stroke="#c084fc" stroke-width="3" fill="none"/>
+        <path d="M 660 140 L 700 140" stroke="#38bdf8" stroke-width="3" fill="none"/>
+      </svg>
+    </div>
+  
+<p>This integration connects <strong>Slack</strong> as a conversational chat interface to an autonomous <strong>Google AI Studio Custom Agent</strong> that reasons, triggers tools, and retrieves live data from the <strong>Salesforce <code class="inline-code">learn_dc</code></strong> CRM environment.</p>
+<h3 class="sub-title">Core Capabilities:</h3>
+<ol class="styled-ordered-list">
+<li><strong>Slack Conversational Interface</strong>: Team members interact with the bot in public/private channels (<code class="inline-code">@Gemini</code>) and 1-on-1 Direct Messages (DMs).</li>
+<li><strong>Google AI Studio Brain (Gemini 3.6 Flash)</strong>: Employs system instructions, reasoning, and native <strong>Function Calling</strong> to understand natural language intent.</li>
+<li><strong>Autonomous Salesforce CRM Retrieval</strong>: Pulls live Account details, CSM assignments (<code class="inline-code">Account.CSM_Email__c</code>), Contacts, customer email summaries, and Google Calendar meetings.</li>
+<li><strong>Slack Socket Mode (<code class="inline-code">wss://</code>)</strong>: Outbound WebSocket architecture eliminating public IPs, open firewall ports, SSL certificates, or <code class="inline-code">ngrok</code> tunnels.</li>
+<li><strong>Multi-Turn Thread Continuity</strong>: Automatically binds Slack thread timestamps (<code class="inline-code">thread_ts</code>) to ongoing Gemini chat sessions for natural, contextual dialogues.</li>
+<li><strong>24/7 Containerized Runtime</strong>: Multi-stage Docker container with automatic restart policies (<code class="inline-code">--restart unless-stopped</code>) and built-in HTTP health check probes.</li>
+</ol>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-2-architecture-data-flow">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 2. Architecture & Data Flow</h2>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+graph TD
+    subgraph "Slack Collaboration Workspace"
+        User["Slack User"]
+        Channel["Slack Channel / DM / Thread"]
+        SlackPlatform["Slack API Engine<br/>(Socket Mode Gateway)"]
+    end
+
+    subgraph "Middleware Service (slack-gemini-agent)"
+        BoltApp["Slack Bolt Framework<br/>(WebSocket Listener)"]
+        SessionMgr["Session Manager<br/>(thread_ts ➔ Gemini Chat Session)"]
+        Formatter["Slack Block Kit Formatter<br/>(Markdown ➔ Slack mrkdwn)"]
+        ToolRouter["Tool Dispatcher & Executor<br/>(Autonomous Function Loop)"]
+        HealthServer["HTTP Health Server<br/>(0.0.0.0:8080 /health)"]
+    end
+
+    subgraph "Google AI Studio & Gemini API"
+        GeminiModel["Gemini 3.6 Flash Engine<br/>(System Instructions + Tools)"]
+    end
+
+    subgraph "Salesforce Org (learn_dc)"
+        AccountObj["Account Record<br/>(CSM_Email__c, Status)"]
+        ContactObj["Contact Records<br/>(Email, Title)"]
+        EmailSummaryObj["Gmail_Thread_Summary__c<br/>(AI Narrative & Action Items)"]
+        EventObj["Standard Event Object<br/>(Google Meet & Meetings)"]
+    end
+
+    %% User Interaction Flow
+    User -->|"1. Types message or @mention"| Channel
+    Channel -->|"2. Dispatches event via WSS"| SlackPlatform
+    SlackPlatform -->|"3. Delivers payload to WebSocket"| BoltApp
+
+    %% 3-Second SLA Mitigation
+    BoltApp -->|"4. Immediate ACK + reacts ⏳"| SlackPlatform
+    
+    %% Session & AI Reasoning
+    BoltApp -->|"5. Resolve session history"| SessionMgr
+    SessionMgr -->|"6. Send prompt + conversation history"| GeminiModel
+    
+    %% Function Calling Loop
+    GeminiModel -->|"7. Returns functionCalls (e.g. get_crm_account)"| ToolRouter
+    ToolRouter -->|"8. Queries CRM data"| AccountObj
+    ToolRouter -->|"8. Queries CRM data"| ContactObj
+    ToolRouter -->|"8. Queries email summary"| EmailSummaryObj
+    ToolRouter -->|"9. Return tool output (functionResponse)"| GeminiModel
+    
+    %% Response Delivery
+    GeminiModel -->|"10. Final synthesized answer"| SessionMgr
+    SessionMgr -->|"11. Converts to Block Kit"| Formatter
+    Formatter -->|"12. Removes ⏳, adds ✅, posts thread reply"| SlackPlatform
+    SlackPlatform -->|"13. Renders rich card in thread"| User
+              </div>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-3-step-by-step-implementation-breakdown">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 3. Step-by-Step Implementation Breakdown</h2>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 1</span>
+                <h4>Google AI Studio Agent Creation & Configuration</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li><strong>System Prompt & Persona Design (<code class="inline-code">src/gemini/prompt.ts</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Defined the persona: <strong>Gemini Agent</strong>, a concise, proactive Enterprise Assistant operating inside Slack.</li>
+<li>Enforced Slack formatting rules: clean bullet points, bold headers, inline code tags, and short paragraphs.</li>
+<li>Configured guardrails against hallucinating CRM data or scheduling conflicts.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Model Selection</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Configured with <code class="inline-code">gemini-3.6-flash</code> (recommended current model for low-latency chat and multi-tool reasoning).</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Tool Declarations & Function Calling Schemas (<code class="inline-code">src/gemini/tools.ts</code>)</strong>:</li>
+</ol>
+<p>   Defined JSON Schema parameter specifications that Gemini autonomously selects:</p>
+<ul class="styled-list">
+<li><strong><code class="inline-code">get_current_time</code></strong>: Real-time server and timezone date/time queries.</li>
+<li><strong><code class="inline-code">get_crm_account</code></strong>: Queries Salesforce Account, CSM email, status, and contacts.</li>
+<li><strong><code class="inline-code">summarize_customer_thread</code></strong>: Pulls customer email narrative summaries and action items.</li>
+<li><strong><code class="inline-code">schedule_calendar_meeting</code></strong>: Books calendar appointments with Google Meet links.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Autonomous Function Calling Loop & Resilience (<code class="inline-code">src/gemini/agent.ts</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Built a dynamic loop: when Gemini requests a tool, the engine executes it, wraps the result in a <code class="inline-code">functionResponse</code>, and sends it back to the model until a final text answer is produced.</li>
+<li>Added exponential backoff retry logic to smoothly handle transient API demand spikes.</li>
+<li>Implemented an in-memory session cache with TTL cleanup to prevent memory leaks across long-running threads.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 2</span>
+                <h4>Slack App Creation & Permissions Setup</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li><strong>Created Slack App via Manifest (<code class="inline-code">slack-manifest.yaml</code> / <code class="inline-code">slack-manifest.json</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>App Name: <code class="inline-code">Gemini Agent</code> (or <code class="inline-code">test_agent_app</code>).</li>
+<li>Enabled <strong>Socket Mode</strong> (<code class="inline-code">socket_mode_enabled: true</code>).</li>
+<li>Enabled <strong>Messages Tab</strong> (<code class="inline-code">messages_tab_enabled: true</code>, <code class="inline-code">messages_tab_read_only_enabled: false</code>) to permit 1-on-1 Direct Messaging.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Configured Bot Token Scopes</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><code class="inline-code">app_mentions:read</code>: Listen to <code class="inline-code">@mention</code> in channels.</li>
+<li><code class="inline-code">chat:write</code>: Post messages and replies.</li>
+<li><code class="inline-code">im:history</code>, <code class="inline-code">im:read</code>, <code class="inline-code">im:write</code>: Direct message thread history and responses.</li>
+<li><code class="inline-code">channels:history</code>, <code class="inline-code">groups:history</code>: Channel message thread context.</li>
+<li><code class="inline-code">reactions:write</code>: Add <code class="inline-code">:thinking_face:</code> and <code class="inline-code">:white_check_mark:</code> status indicators.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Obtained Required Tokens in <code class="inline-code">.env</code></strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><code class="inline-code">SLACK_BOT_TOKEN</code>: <code class="inline-code">xoxb-...</code> (Bot User OAuth Token).</li>
+<li><code class="inline-code">SLACK_APP_TOKEN</code>: <code class="inline-code">xapp-...</code> (App-Level Token with <code class="inline-code">connections:write</code>).</li>
+<li><code class="inline-code">SLACK_SIGNING_SECRET</code>: Secret for verifying Slack signatures.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 3</span>
+                <h4>Middleware Integration Service (Slack Bolt)</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li><strong>Slack Socket Mode Listener (<code class="inline-code">src/index.ts</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Uses <code class="inline-code">@slack/bolt</code> with <code class="inline-code">socketMode: true</code>.</li>
+<li>Connects over an outbound WebSocket (<code class="inline-code">wss://</code>) to Slack's servers, eliminating the need for public IP addresses, domain names, or reverse proxy tunnels like <code class="inline-code">ngrok</code>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>3-Second SLA Mitigation (<code class="inline-code">src/slack/handlers.ts</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Slack mandates that event delivery be acknowledged within 3 seconds.</li>
+<li>The handler immediately acknowledges the event and adds a <code class="inline-code">:thinking_face:</code> emoji reaction to the user's message, letting the user know the AI is actively working.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Multi-Turn Thread Continuity</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Maps each Slack <code class="inline-code">thread_ts</code> to a unique Gemini chat session (<code class="inline-code">thread-{channel}-{thread_ts}</code>).</li>
+<li>Direct messages use <code class="inline-code">dm-{channel}-{user}</code>.</li>
+<li>Follow-up questions in the same thread preserve full conversational memory without needing to restate context.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Slack mrkdwn & Block Kit Formatter (<code class="inline-code">src/slack/formatters.ts</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Automatically translates standard markdown (<code class="inline-code">**bold**</code>, <code class="inline-code">[link](url)</code>, <code class="inline-code">### headers</code>) into Slack-native <code class="inline-code">mrkdwn</code>.</li>
+<li>Packages responses into structured Block Kit cards with subtle divider lines and branding footers.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 4</span>
+                <h4>How the Agent Fetches Data from Salesforce</h4>
+              </div>
+          <p>The agent interacts with Salesforce CRM (<code class="inline-code">learn_dc</code>) through declared function calls:</p>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor User as Slack User
+    participant Slack as Slack App
+    participant Bolt as Bolt Middleware
+    participant Gemini as Gemini 3.6 Flash
+    participant SF as Salesforce Org (learn_dc)
+
+    User->>Slack: "@Gemini check CRM details for Acme Corp"
+    Slack->>Bolt: Delivers app_mention event over WebSocket
+    Bolt->>Slack: Adds :thinking_face: reaction
+    Bolt->>Gemini: Sends user prompt + tool declarations
+    Note over Gemini: Gemini evaluates declared tools
+    Gemini-->>Bolt: Emits functionCall: get_crm_account(accountName: "Acme Corp")
+    Bolt->>SF: Queries Account (CSM_Email__c, Contacts, Status)
+    SF-->>Bolt: Returns Account JSON payload
+    Bolt->>Gemini: Feeds functionResponse back to chat
+    Note over Gemini: Gemini synthesizes the Salesforce data
+    Gemini-->>Bolt: Returns final structured answer
+    Bolt->>Slack: Swaps reaction to :white_check_mark: & posts Block Kit reply
+    Slack-->>User: Displays Account card with CSM & Contact details
+              </div>
+            </div>
+          <ol class="styled-ordered-list">
+<li><strong>User asks natural language question</strong>: e.g., <em>"Who is the assigned CSM and primary contact for Acme Corp?"</em></li>
+<li><strong>Gemini analyzes intent</strong>: Matches intent to <code class="inline-code">get_crm_account(accountName: &quot;Acme Corp&quot;)</code>.</li>
+<li><strong>Execution layer queries Salesforce</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Reads Account Name, Status, Industry, and assigned <code class="inline-code">Account.CSM_Email__c</code>.</li>
+<li>Pulls related <code class="inline-code">Contact</code> records (Name, Email, Title).</li>
+<li>If requested, queries <code class="inline-code">Gmail_Thread_Summary__c</code> for executive email summaries.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Gemini synthesizes the payload</strong>: Converts raw CRM records into a clean, actionable summary for the user in Slack.</li>
+</ol>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">PHASE 5</span>
+                <h4>Containerization & 24/7 Background Hosting</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li><strong>Multi-Stage Dockerfile (<code class="inline-code">Dockerfile</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Stage 1 (Builder): Installs dependencies and compiles TypeScript with <code class="inline-code">tsc</code>.</li>
+<li>Stage 2 (Runner): Lightweight Alpine Linux image (<code class="inline-code">node:22-alpine</code>) copying only production dependencies and compiled JavaScript (<code class="inline-code">dist/</code>).</li>
+<li>Image footprint: <strong>66.5 MB</strong>.</li>
+<li>Runs as non-root user <code class="inline-code">node</code> for enterprise security.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Cloud Run & Health Check Probes</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Built-in HTTP server listening on <code class="inline-code">0.0.0.0:8080</code>.</li>
+<li><code class="inline-code">GET /health</code> returns HTTP 200:</li>
+</ul>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">JSON</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-json">     {
+       &quot;status&quot;: &quot;healthy&quot;,
+       &quot;service&quot;: &quot;slack-gemini-agent&quot;,
+       &quot;runtime&quot;: &quot;Google Cloud Run&quot;,
+       &quot;model&quot;: &quot;gemini-3.6-flash&quot;,
+       &quot;uptimeSeconds&quot;: 1018,
+       &quot;timestamp&quot;: &quot;2026-09-03T07:47:01.457Z&quot;
+     }</code></pre>
+            </div>
+          <ol class="styled-ordered-list">
+<li><strong>24/7 Local Execution with Auto-Restart Policy</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Started with <code class="inline-code">--restart unless-stopped</code> under container name <strong><code class="inline-code">slack-gemini-agent-service</code></strong>.</li>
+<li>Automatically restarts on system reboot or Docker Desktop restart without manual intervention.</li>
+</ul>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-4-directory-file-structure">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 4. Directory & File Structure</h2>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">CODE</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-">Learn DC/
+├── force-app/                                           # Existing Salesforce Org Metadata (Untouched)
+├── SALESFORCE_GMAIL_INTEGRATION.md                      # Existing Gmail Integration Documentation
+├── SALESFORCE_GOOGLE_CALENDAR_INTEGRATION.md            # Existing Google Calendar Documentation
+├── SALESFORCE_SLACK_GOOGLE_AI_STUDIO_INTEGRATION.md     # This Documentation File
+├── SALESFORCE_SLACK_GOOGLE_AI_STUDIO_INTEGRATION.docx   # Microsoft Word Version for Sharing
+└── slack-gemini-agent/                                  # Isolated Slack Gemini Agent Module
+    ├── Dockerfile                                       # Multi-stage production container
+    ├── .dockerignore
+    ├── cloudrun.yaml                                    # Declarative GCP Cloud Run specification
+    ├── GCP_DEPLOYMENT_GUIDE.md                          # Google Cloud Run deployment instructions
+    ├── slack-manifest.yaml                              # Slack App manifest (YAML)
+    ├── slack-manifest.json                              # Slack App manifest (JSON)
+    ├── package.json                                     # Dependencies &amp; npm scripts
+    ├── tsconfig.json                                    # TypeScript compiler options
+    ├── .env                                             # Active tokens &amp; secrets
+    ├── .env.example                                     # Template for environment variables
+    └── src/
+        ├── index.ts                                     # Bolt App startup &amp; Cloud Run HTTP health server
+        ├── config.ts                                    # Environment validation &amp; loading
+        ├── test-agent.ts                                # CLI verification test suite
+        ├── gemini/
+        │   ├── client.ts                                # Google Gen AI client singleton
+        │   ├── prompt.ts                                # System prompt, persona, Slack formatting rules
+        │   ├── tools.ts                                 # Tool declarations &amp; execution dispatcher
+        │   └── agent.ts                                 # Multi-turn chat session manager &amp; retry loop
+        └── slack/
+            ├── handlers.ts                              # app_mention &amp; direct message listeners
+            └── formatters.ts                            # Slack mrkdwn &amp; Block Kit card builder</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-5-how-to-test-and-use">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 5. How to Test and Use</h2>
+<h3 class="sub-title">Scenario 1: Direct Message (1-on-1 Chat)</h3>
+<ol class="styled-ordered-list">
+<li>Open Slack ➔ Click the bot under <strong>Apps</strong> (e.g. <code class="inline-code">test_agent_app</code> or <code class="inline-code">Gemini</code>).</li>
+<li>Send: <code class="inline-code">&quot;Hi! Who are you and how can you assist our team?&quot;</code></li>
+<li><strong>Result</strong>: The bot reacts with <code class="inline-code">:thinking_face:</code>, calls Gemini, replaces the reaction with <code class="inline-code">:white_check_mark:</code>, and posts a rich Block Kit card outlining its capabilities.</li>
+</ol>
+<h3 class="sub-title">Scenario 2: Salesforce CRM Account Lookup</h3>
+<ol class="styled-ordered-list">
+<li>In DM or Channel, send:</li>
+</ol>
+<p>   <code class="inline-code">&quot;Can you look up the account details for Acme Corp and let me know who the CSM is?&quot;</code></p>
+<ol class="styled-ordered-list">
+<li><strong>Result</strong>: Gemini autonomously calls <code class="inline-code">get_crm_account(accountName: &quot;Acme Corp&quot;)</code>, retrieves the data from Salesforce, and responds with the Account status, CSM email (<code class="inline-code">skgsummo5@gmail.com</code>), and primary contact details.</li>
+</ol>
+<h3 class="sub-title">Scenario 3: Real-Time Customer Email Summary</h3>
+<ol class="styled-ordered-list">
+<li>In DM or Channel, send:</li>
+</ol>
+<p>   <code class="inline-code">&quot;Summarize the latest email thread for Acme Corp&quot;</code></p>
+<ol class="styled-ordered-list">
+<li><strong>Result</strong>: Gemini calls <code class="inline-code">summarize_customer_thread</code>, pulls the executive summary from <code class="inline-code">Gmail_Thread_Summary__c</code>, and presents the narrative overview, discussion highlights, and recommended follow-ups.</li>
+</ol>
+<h3 class="sub-title">Scenario 4: Meeting Scheduling on Google Calendar</h3>
+<ol class="styled-ordered-list">
+<li>In DM or Channel, send:</li>
+</ol>
+<p>   <code class="inline-code">&quot;Schedule a follow-up review with Alex Hales tomorrow at 3 PM&quot;</code></p>
+<ol class="styled-ordered-list">
+<li><strong>Result</strong>: Gemini calls <code class="inline-code">schedule_calendar_meeting</code>, schedules the meeting, generates a Google Meet video link, and formats the invitation confirmation in Slack.</li>
+</ol>
+<h3 class="sub-title">Scenario 5: Multi-Turn Thread Continuity</h3>
+<ol class="styled-ordered-list">
+<li>In any existing reply thread, send a follow-up question:</li>
+</ol>
+<p>   <code class="inline-code">&quot;What was the recommended next step for that?&quot;</code></p>
+<ol class="styled-ordered-list">
+<li><strong>Result</strong>: Gemini uses the <code class="inline-code">thread_ts</code> session context to remember previous exchanges and answers accurately without losing context.</li>
+</ol>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-6-how-to-manage-the-24-7-container-service">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 6. How to Manage the 24/7 Container Service</h2>
+<p>From inside <code class="inline-code">slack-gemini-agent/</code>:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">BASH</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-bash"># View real-time logs (incoming messages, tool triggers, responses)
+npm run container:logs
+
+# Check status of the container
+npm run container:status
+
+# Restart the bot container
+npm run container:restart
+
+# Stop the bot container
+npm run container:stop
+
+# Start the bot container
+npm run container:start</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-7-future-gcp-cloud-run-deployment">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 7. Future GCP Cloud Run Deployment</h2>
+<p>If you choose to link billing to your Google Cloud project (<code class="inline-code">exalted-justice-507211-v9</code>), you can deploy this exact container to <strong>Google Cloud Run</strong> in 2 minutes:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">BASH</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-bash">cd slack-gemini-agent
+
+gcloud run deploy slack-gemini-agent \
+  --source . \
+  --project exalted-justice-507211-v9 \
+  --region us-central1 \
+  --platform managed \
+  --allow-unauthenticated \
+  --min-instances 1 \
+  --max-instances 2 \
+  --memory 512Mi \
+  --no-cpu-throttling \
+  --set-env-vars &quot;GEMINI_API_KEY=YOUR_KEY,GEMINI_MODEL=gemini-3.6-flash,SLACK_BOT_TOKEN=xoxb-...,SLACK_APP_TOKEN=xapp-...,SLACK_SIGNING_SECRET=...&quot;</code></pre>
+            </div>
+          <p><em>(Detailed steps documented in <a href="file:///C:/Users/Sumit%20Kr%20Gupta/OneDrive%20-%20Teqfocus%20Solutions%20Pvt.%20Ltd/Desktop/Learn%20DC/slack-gemini-agent/GCP_DEPLOYMENT_GUIDE.md" target="_blank" rel="noopener noreferrer" class="doc-link"><code class="inline-code">GCP_DEPLOYMENT_GUIDE.md</code></a>).</em></p>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-8-complete-from-scratch-implementation-tutorial-zero-to-hero-guide">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 8. Complete "From-Scratch" Implementation Tutorial (Zero-to-Hero Guide)</h2>
+<p>If you or any engineer wants to replicate and build this full functionality completely from scratch on a new project or org, follow this definitive step-by-step guide.</p>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 1</span>
+                <h4>Prerequisites & Developer Environment</h4>
+              </div>
+          <p>Before writing code, ensure you have:</p>
+<ol class="styled-ordered-list">
+<li><strong>Node.js (v20+ or v22+) & npm</strong>: Check via <code class="inline-code">node -v</code> and <code class="inline-code">npm -v</code>.</li>
+<li><strong>Docker Desktop</strong>: Required for local 24/7 background container execution (<code class="inline-code">docker -v</code>).</li>
+<li><strong>Slack Workspace Admin Access</strong>: Permission to create apps at <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" class="doc-link">api.slack.com/apps</a>.</li>
+<li><strong>Google AI Studio Account</strong>: Free API key generated at <a href="https://aistudio.google.com/" target="_blank" rel="noopener noreferrer" class="doc-link">aistudio.google.com</a>.</li>
+<li><strong>Salesforce Target Org</strong>: A Developer Edition, Sandbox, or Scratch Org with Account and Activity data.</li>
+</ol>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 2</span>
+                <h4>Initialize Project & Install Dependencies</h4>
+              </div>
+          <p>Create a dedicated folder (e.g. <code class="inline-code">slack-gemini-agent/</code>) to isolate the bot from Salesforce metadata:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">BASH</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-bash">mkdir slack-gemini-agent
+cd slack-gemini-agent
+
+# Initialize npm package
+npm init -y
+
+# Install runtime dependencies
+npm install @slack/bolt @google/genai dotenv docx
+
+# Install TypeScript developer tooling
+npm install --save-dev typescript @types/node tsx</code></pre>
+            </div>
+          <p>Create <code class="inline-code">tsconfig.json</code>:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">JSON</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-json">{
+  &quot;compilerOptions&quot;: {
+    &quot;target&quot;: &quot;ES2022&quot;,
+    &quot;module&quot;: &quot;NodeNext&quot;,
+    &quot;moduleResolution&quot;: &quot;NodeNext&quot;,
+    &quot;lib&quot;: [&quot;ES2022&quot;],
+    &quot;outDir&quot;: &quot;./dist&quot;,
+    &quot;rootDir&quot;: &quot;./src&quot;,
+    &quot;strict&quot;: true,
+    &quot;esModuleInterop&quot;: true,
+    &quot;skipLibCheck&quot;: true,
+    &quot;forceConsistentCasingInFileNames&quot;: true,
+    &quot;resolveJsonModule&quot;: true
+  },
+  &quot;include&quot;: [&quot;src/**/*&quot;],
+  &quot;exclude&quot;: [&quot;node_modules&quot;, &quot;dist&quot;]
+}</code></pre>
+            </div>
+          <p>Add the operational scripts to <code class="inline-code">package.json</code>:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">JSON</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-json">&quot;scripts&quot;: {
+  &quot;dev&quot;: &quot;tsx watch src/index.ts&quot;,
+  &quot;build&quot;: &quot;tsc&quot;,
+  &quot;start&quot;: &quot;node dist/index.js&quot;,
+  &quot;test:agent&quot;: &quot;tsx src/test-agent.ts&quot;,
+  &quot;container:logs&quot;: &quot;docker logs -f slack-gemini-agent-service&quot;,
+  &quot;container:restart&quot;: &quot;docker restart slack-gemini-agent-service&quot;,
+  &quot;container:stop&quot;: &quot;docker stop slack-gemini-agent-service&quot;,
+  &quot;container:start&quot;: &quot;docker start slack-gemini-agent-service&quot;,
+  &quot;container:status&quot;: &quot;docker ps --filter name=slack-gemini-agent-service&quot;
+}</code></pre>
+            </div>
+          <hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 3</span>
+                <h4>Create & Configure the Slack App</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li>Go to <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" class="doc-link">api.slack.com/apps</a> ➔ Click <strong>Create New App</strong> ➔ Choose <strong>From an app manifest</strong>.</li>
+<li>Select your Slack workspace and paste the following YAML manifest:</li>
+</ol>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">YAML</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-yaml">   display_information:
+     name: Gemini Agent
+     description: Autonomous enterprise AI assistant powered by Google AI Studio
+     background_color: &quot;#1a73e8&quot;
+   features:
+     bot_user:
+       display_name: Gemini
+       always_online: true
+     app_home:
+       messages_tab_enabled: true
+       messages_tab_read_only_enabled: false
+   oauth_config:
+     scopes:
+       bot:
+         - app_mentions:read
+         - chat:write
+         - channels:history
+         - groups:history
+         - im:history
+         - im:read
+         - im:write
+         - reactions:write
+   settings:
+     socket_mode_enabled: true
+     event_subscriptions:
+       bot_events:
+         - app_mention
+         - message.im
+     interactivity:
+       is_enabled: true</code></pre>
+            </div>
+          <ol class="styled-ordered-list">
+<li>Click <strong>Create</strong>.</li>
+<li><strong>Generate App-Level Token (for Socket Mode)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Go to <strong>Basic Information</strong> ➔ Scroll to <strong>App-Level Tokens</strong> ➔ Click <strong>Generate Token and Scopes</strong>.</li>
+<li>Name: <code class="inline-code">socket-token</code></li>
+<li>Add scope: <code class="inline-code">connections:write</code></li>
+<li>Click <strong>Generate</strong> and copy the <code class="inline-code">xapp-...</code> token.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Install App to Workspace</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>In left menu, click <strong>Install App</strong> ➔ <strong>Install to Workspace</strong> ➔ Click <strong>Allow</strong>.</li>
+<li>Copy <strong>Bot User OAuth Token</strong> (<code class="inline-code">xoxb-...</code>) from <strong>OAuth & Permissions</strong>.</li>
+<li>Copy <strong>Signing Secret</strong> from <strong>Basic Information</strong>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Enable 1-on-1 Messages (Critical!)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>In left menu under <strong>Features</strong>, click <strong>App Home</strong>.</li>
+<li>Under <strong>Messages Tab</strong>, ensure the checkbox <strong>"Allow users to send Slash commands and messages from the messages tab"</strong> is CHECKED.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 4</span>
+                <h4>Configure Environment Secrets (<code class="inline-code">.env</code>)</h4>
+              </div>
+          <p>Create <code class="inline-code">.env</code> in <code class="inline-code">slack-gemini-agent/</code>:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">ENV</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-env"># Google AI Studio
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_MODEL=gemini-3.6-flash
+
+# Slack App Credentials
+SLACK_BOT_TOKEN=xoxb-your-bot-token
+SLACK_APP_TOKEN=xapp-your-app-token
+SLACK_SIGNING_SECRET=your-signing-secret
+
+# Salesforce Settings (learn_dc)
+ENABLE_SALESFORCE_TOOLS=true
+SF_LOGIN_URL=https://login.salesforce.com
+SF_USERNAME=sumit.gupta@datacloud.com</code></pre>
+            </div>
+          <hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 5</span>
+                <h4>Implement the Core Application Files</h4>
+              </div>
+          <h4 class="sub-sub-title">1. Configuration Validator (<code class="inline-code">src/config.ts</code>)</h4>
+<p>Validates that required Slack and Gemini tokens exist on startup, preventing runtime crashes.</p>
+<h4 class="sub-sub-title">2. System Prompt & Persona (<code class="inline-code">src/gemini/prompt.ts</code>)</h4>
+<p>Defines the enterprise assistant persona, mandates Slack formatting standards (bullet points, bold highlights, code blocks), and sets guardrails against hallucinating CRM data.</p>
+<h4 class="sub-sub-title">3. Declarative Tools & Function Calling (<code class="inline-code">src/gemini/tools.ts</code>)</h4>
+<p>Exposes JSON Schema parameter specifications:</p>
+<ul class="styled-list">
+<li><code class="inline-code">get_current_time</code>: Returns timezone-aware real-time dates.</li>
+<li><code class="inline-code">get_crm_account</code>: Queries Account Name, CSM email (<code class="inline-code">Account.CSM_Email__c</code>), and Contacts.</li>
+<li><code class="inline-code">summarize_customer_thread</code>: Pulls customer email summaries and action items.</li>
+<li><code class="inline-code">schedule_calendar_meeting</code>: Coordinates appointments with Google Meet links.</li>
+</ul>
+<h4 class="sub-sub-title">4. Session Manager & Function Calling Loop (<code class="inline-code">src/gemini/agent.ts</code>)</h4>
+<ul class="styled-list">
+<li>Manages an in-memory chat session cache mapping Slack thread timestamps (<code class="inline-code">thread_ts</code>) to <code class="inline-code">ai.chats.create(...)</code>.</li>
+<li>Executes the autonomous tool loop: detects <code class="inline-code">response.functionCalls</code>, executes the corresponding tool, feeds results back via <code class="inline-code">functionResponse</code>, and loops until the final answer is synthesized.</li>
+<li>Includes exponential backoff retry on transient 503/429 spikes.</li>
+</ul>
+<h4 class="sub-sub-title">5. Slack Block Kit Formatter (<code class="inline-code">src/slack/formatters.ts</code>)</h4>
+<p>Converts standard markdown into Slack mrkdwn and wraps answers in professional Block Kit sections and divider cards.</p>
+<h4 class="sub-sub-title">6. Slack Event Handlers (<code class="inline-code">src/slack/handlers.ts</code>)</h4>
+<ul class="styled-list">
+<li><strong>Channel Mentions (<code class="inline-code">app_mention</code>)</strong>: Cleans mention tags, reacts with <code class="inline-code">:thinking_face:</code>, passes prompt to Gemini, and replies in the message thread.</li>
+<li><strong>Direct Messages (<code class="inline-code">message</code>)</strong>: Detects direct messages (<code class="inline-code">channel.startsWith(&#039;D&#039;)</code>), preserves DM session memory, and swaps reaction to <code class="inline-code">:white_check_mark:</code>.</li>
+</ul>
+<h4 class="sub-sub-title">7. Main Startup & Health Server (<code class="inline-code">src/index.ts</code>)</h4>
+<p>Initializes the <code class="inline-code">@slack/bolt</code> App with <code class="inline-code">socketMode: true</code>, boots up an HTTP health server on port <code class="inline-code">8080</code> (<code class="inline-code">GET /health</code>), and connects to Slack.</p>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 6</span>
+                <h4>Test & Verify Locally</h4>
+              </div>
+          <ol class="styled-ordered-list">
+<li><strong>Verify AI Agent & Tools via CLI</strong>:</li>
+</ol>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">BASH</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-bash">   npm run test:agent</code></pre>
+            </div>
+          <p>   Ensures prompt reasoning, tool invocation, and multi-turn memory work cleanly.</p>
+<ol class="styled-ordered-list">
+<li><strong>Start the Bot in Development Mode</strong>:</li>
+</ol>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">BASH</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-bash">   npm run dev</code></pre>
+            </div>
+          <ol class="styled-ordered-list">
+<li><strong>Verify in Slack</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Send DM: <em>"Hi! Who are you?"</em> ➔ Verifies greeting & Block Kit formatting.</li>
+<li>Send CRM Query: <em>"Look up details for Acme Corp"</em> ➔ Verifies autonomous tool execution.</li>
+<li>Mention in Channel: <em>"@Gemini summarize latest email thread for Acme Corp"</em> ➔ Verifies channel thread reply.</li>
+</ul>
+<hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 7</span>
+                <h4>Containerize for 24/7 Production Execution</h4>
+              </div>
+          <p>Create <code class="inline-code">Dockerfile</code>:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">DOCKERFILE</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-dockerfile">FROM node:22-alpine AS builder
+WORKDIR /app
+COPY package*.json tsconfig.json ./
+RUN npm ci
+COPY src/ ./src/
+RUN npm run build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=8080
+COPY package*.json ./
+RUN npm ci --omit=dev &amp;&amp; npm cache clean --force
+COPY --from=builder /app/dist ./dist
+USER node
+EXPOSE 8080
+CMD [&quot;node&quot;, &quot;dist/index.js&quot;]</code></pre>
+            </div>
+          <p>Create <code class="inline-code">.dockerignore</code>:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">CODE</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-">node_modules
+dist
+.env
+.git</code></pre>
+            </div>
+          <p>Build and launch the persistent background container:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">BASH</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-bash"># Build the compact 66.5 MB container
+docker build -t slack-gemini-agent:latest .
+
+# Run 24/7 with auto-restart on system reboot
+docker run -d --name slack-gemini-agent-service --restart unless-stopped -p 8080:8080 --env-file .env slack-gemini-agent:latest</code></pre>
+            </div>
+          <p>The bot will now run 24 hours a day, 7 days a week, automatically restarting after reboots!</p>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-9-native-salesforce-hosted-mcp-integration-model-context-protocol">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 9. Native Salesforce-Hosted MCP Integration (Model Context Protocol)</h2>
+<p>To take this integration to the next level, Salesforce now provides native <strong>Hosted MCP Servers</strong> configured directly in <strong>Salesforce Setup</strong>. This allows AI agents to interact with your org using the open <strong>Model Context Protocol (JSON-RPC 2.0 over Server-Sent Events)</strong> without writing custom API code.</p>
+<h3 class="sub-title">1. How It Works</h3>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+graph LR
+    SlackUser["Slack User"] <-->|"Natural Language"| SlackBot["Slack Bot (Socket Mode)"]
+    SlackBot <-->|"User Prompt"| GeminiAgent["Google AI Studio Gemini Agent<br/>(MCP Client)"]
+    GeminiAgent <-->|"JSON-RPC 2.0 over SSE"| SFHostedMCP["Salesforce Hosted MCP Server<br/>(Setup ➔ MCP Server)"]
+    SFHostedMCP <-->|"Native CRUD, FLS & Sharing"| SalesforceData["Salesforce Objects & Apex<br/>(Account, Contact, Event, Gmail_Thread_Summary__c)"]
+              </div>
+            </div>
+          <ol class="styled-ordered-list">
+<li><strong>Salesforce Setup (MCP Server)</strong>: You configure and activate a Custom MCP Server directly in the Salesforce UI, selecting which objects and Apex actions to expose.</li>
+<li><strong>Dynamic Tool Reflection</strong>: On startup, our agent queries <code class="inline-code">mcpClient.listTools()</code>. It dynamically registers all tools configured in Salesforce Setup into Gemini without hardcoding!</li>
+<li><strong>Graceful Fallback</strong>: If <code class="inline-code">SF_MCP_ENDPOINT_URL</code> is not yet configured, the bot seamlessly continues serving requests using its built-in CRM tools.</li>
+</ol>
+<hr class="section-divider"/>
+<h3 class="sub-title">2. How to Create the Custom MCP Server in Salesforce Setup</h3>
+<ol class="styled-ordered-list">
+<li><strong>Log in to Salesforce (<code class="inline-code">learn_dc</code>)</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Go to <strong>Setup</strong> (gear icon ⚙️).</li>
+<li>In Quick Find, search for <strong>"MCP Server"</strong> (under <em>Platform Developer Tools</em> / <em>Agentforce</em> / <em>External Services</em>).</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Click "New Custom MCP Server"</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><strong>Label</strong>: <code class="inline-code">LearnDC Agent MCP Server</code></li>
+<li><strong>API Name</strong>: <code class="inline-code">LearnDC_Agent_MCP_Server</code></li>
+<li><strong>Description</strong>: <code class="inline-code">Native MCP server exposing CRM data, email summaries, and calendar actions to AI agents.</code></li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Curate the Toolset ("Build the Plate")</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li><strong>Objects</strong>: Check <code class="inline-code">Account</code>, <code class="inline-code">Contact</code>, <code class="inline-code">Event</code>, and <code class="inline-code">Gmail_Thread_Summary__c</code>.</li>
+<li><strong>Apex Actions</strong>: Select <code class="inline-code">AccountCalendarController.createMeeting</code> and <code class="inline-code">AccountGmailController</code>.</li>
+<li><strong>Queries</strong>: Enable safe SOQL execution.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li><strong>Save & Activate</strong>:</li>
+</ol>
+<ul class="styled-list">
+<li>Click <strong>Save & Activate</strong>.</li>
+<li>Copy the generated <strong>MCP Server Endpoint URL</strong> (e.g. <code class="inline-code">https://&lt;your-instance&gt;.my.salesforce.com/services/mcp/v1/...</code>).</li>
+</ul>
+<hr class="section-divider"/>
+<h3 class="sub-title">3. Connect the Agent to Salesforce-Hosted MCP</h3>
+<ol class="styled-ordered-list">
+<li>Open <code class="inline-code">slack-gemini-agent/.env</code> and paste your endpoint URL:</li>
+</ol>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">ENV</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-env">   SF_MCP_ENDPOINT_URL=https://&lt;your-instance&gt;.my.salesforce.com/services/mcp/v1/...
+   SF_ORG_ALIAS=learn_dc</code></pre>
+            </div>
+          <ol class="styled-ordered-list">
+<li>Run the diagnostic test:</li>
+</ol>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">BASH</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-bash">   npm run test:mcp</code></pre>
+            </div>
+          <p>   This will automatically:</p>
+<ul class="styled-list">
+<li>Resolve your active <code class="inline-code">learn_dc</code> session and access token via Salesforce CLI.</li>
+<li>Connect to the Salesforce Hosted MCP Server via Server-Sent Events (<code class="inline-code">SSEClientTransport</code>).</li>
+<li>List and display all tools configured in Salesforce Setup.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li>Restart the background container service:</li>
+</ol>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">BASH</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-bash">   npm run container:restart</code></pre>
+            </div>
+          <p>   All tools declared in Salesforce Setup are now instantly active and usable directly from Slack!</p>
+</section>
+
+  </div>
+
+  <a href="#" class="back-to-top">↑ Top</a>
+
+  <footer>
+    <strong>Salesforce Lightning Platform • Enterprise AI Integration Guide</strong><br/>
+    Internal Engineering Reference & Operational Playbook • Org: <code>learn_dc</code>
+  </footer>
+
+  <script>
+    function copyCode(btn) {
+      const container = btn.closest('.code-container');
+      const code = container.querySelector('code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const origText = btn.innerText;
+        btn.innerText = '✓ Copied!';
+        btn.style.background = '#2EB67D';
+        btn.style.borderColor = '#2EB67D';
+        btn.style.color = '#ffffff';
+        setTimeout(() => {
+          btn.innerText = origText;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 2000);
+      });
+    }
+
+    // Scroll Progress & Active Tab Highlighting
+    window.addEventListener('scroll', () => {
+      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / height) * 100;
+      document.getElementById('progress-bar').style.width = scrolled + '%';
+
+      const sections = document.querySelectorAll('.section-card');
+      const navTabs = document.querySelectorAll('.nav-tab');
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        if (winScroll >= sectionTop - 140) {
+          current = section.getAttribute('id');
+        }
+      });
+      navTabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.getAttribute('href') === '#' + current) {
+          tab.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+  

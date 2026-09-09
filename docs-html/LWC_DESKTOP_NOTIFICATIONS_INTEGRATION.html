@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Guide: Integrating Native Desktop Notifications &amp; Background Alerts into Salesforce LWC | Salesforce Enterprise Architecture</title>
+  <!-- Mermaid JS for Dynamic Diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      securityLevel: 'loose',
+      flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+      sequence: { useMaxWidth: true, showSequenceNumbers: true }
+    });
+  </script>
+  <style>
+    :root {
+      --sf-blue: #0176D3;
+      --sf-dark-blue: #0b5cab;
+      --sf-navy: #032d60;
+      --slack-aubergine: #4A154B;
+      --slack-green: #2EB67D;
+      --slack-yellow: #ECB22E;
+      --slack-red: #E01E5A;
+      --slack-blue: #36C5F0;
+      --gcp-blue: #4285F4;
+      --snowflake-blue: #29B5E8;
+      --gmail-red: #EA4335;
+      --cal-blue: #1A73E8;
+      --bg-light: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --border-color: #e2e8f0;
+      --code-bg: #1e1e24;
+      --radius-lg: 12px;
+      --radius-md: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-light);
+      color: var(--text-main);
+      line-height: 1.68;
+      padding-bottom: 80px;
+    }
+
+    /* Scroll progress indicator */
+    #progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--sf-blue), var(--slack-green), var(--slack-blue));
+      width: 0%;
+      z-index: 999;
+      transition: width 0.1s ease;
+    }
+
+    /* Hero Header */
+    header.hero {
+      background: linear-gradient(135deg, var(--sf-navy) 0%, #0f172a 45%, var(--slack-aubergine) 100%);
+      color: white;
+      padding: 48px 24px;
+      text-align: center;
+      border-bottom: 4px solid var(--slack-green);
+      position: relative;
+    }
+
+    header.hero h1 {
+      font-size: 2.3rem;
+      margin-bottom: 12px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    header.hero p {
+      font-size: 1.1rem;
+      color: #cbd5e1;
+      max-width: 850px;
+      margin: 0 auto 20px auto;
+    }
+
+    .badge-bar {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .badge {
+      background: rgba(255, 255, 255, 0.12);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #f1f5f9;
+    }
+
+    .badge.success {
+      background: rgba(46, 182, 125, 0.25);
+      border-color: #2EB67D;
+      color: #86efac;
+    }
+
+    /* Layout Container */
+    .container {
+      max-width: 1220px;
+      margin: 28px auto;
+      padding: 0 20px;
+    }
+
+    /* Sticky Navigation Bar with Search */
+    .nav-wrapper {
+      position: sticky;
+      top: 12px;
+      z-index: 100;
+      margin-bottom: 28px;
+    }
+
+    .nav-tabs {
+      display: flex;
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      padding: 6px;
+      overflow-x: auto;
+      border: 1px solid var(--border-color);
+      scrollbar-width: thin;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .nav-tab {
+      padding: 10px 14px;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      color: var(--text-sub);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .nav-tab:hover {
+      background: #f1f5f9;
+      color: var(--sf-blue);
+    }
+
+    .nav-tab.active {
+      background: var(--sf-blue);
+      color: #ffffff;
+    }
+
+    /* Section Cards */
+    .section-card {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border-color);
+    }
+
+    h2.section-title {
+      font-size: 1.55rem;
+      margin-bottom: 20px;
+      color: var(--sf-navy);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 2px solid #f1f5f9;
+      padding-bottom: 12px;
+    }
+
+    .title-badge {
+      font-size: 0.72rem;
+      font-weight: 800;
+      background: #e0f2fe;
+      color: var(--sf-blue);
+      padding: 4px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    h3.sub-title {
+      font-size: 1.25rem;
+      margin: 24px 0 12px 0;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    h4.sub-sub-title {
+      font-size: 1.05rem;
+      margin: 18px 0 10px 0;
+      color: #1e293b;
+    }
+
+    p {
+      color: #334155;
+      font-size: 0.98rem;
+      margin-bottom: 14px;
+    }
+
+    /* Lists */
+    ul.styled-list, ol.styled-ordered-list {
+      padding-left: 24px;
+      margin-bottom: 18px;
+    }
+
+    li {
+      color: #334155;
+      font-size: 0.96rem;
+      margin-bottom: 8px;
+    }
+
+    li.task-item {
+      list-style-type: none;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    li.task-item.checked {
+      color: #059669;
+      font-weight: 500;
+    }
+
+    .check-icon {
+      font-weight: bold;
+      color: #10b981;
+    }
+
+    /* Visual Illustration Card */
+    .visual-illustration-card {
+      background: #0f172a;
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin: 24px 0 32px 0;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      border: 1px solid #334155;
+    }
+
+    .illustration-header {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+
+    .illustration-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: #0284c7;
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+      display: inline-block;
+      margin-bottom: 6px;
+    }
+
+    .illustration-header h3 {
+      font-size: 1.2rem;
+      color: #f8fafc;
+      font-weight: 700;
+    }
+
+    /* Diagram Box (Mermaid) */
+    .diagram-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin: 22px 0;
+      text-align: center;
+      overflow-x: auto;
+    }
+
+    .diagram-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      text-align: left;
+    }
+
+    /* Step Card */
+    .step-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 18px 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      border-left: 4px solid var(--sf-blue);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .step-badge {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #ffffff;
+      background: var(--sf-blue);
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .step-card h4 {
+      font-size: 1.15rem;
+      color: #0f172a;
+      margin: 0;
+    }
+
+    /* Code Container & Syntax Styling */
+    .code-container {
+      background: var(--code-bg);
+      border-radius: var(--radius-md);
+      margin: 18px 0;
+      overflow: hidden;
+      border: 1px solid #334155;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #141418;
+      padding: 8px 16px;
+      border-bottom: 1px solid #2d2d35;
+    }
+
+    .lang-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+    }
+
+    .copy-btn {
+      background: #282832;
+      color: #cbd5e1;
+      border: 1px solid #444;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: var(--sf-blue);
+      color: #ffffff;
+      border-color: var(--sf-blue);
+    }
+
+    pre {
+      padding: 16px;
+      overflow-x: auto;
+      color: #f8f8f2;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    code {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+    }
+
+    .inline-code {
+      background: #edf2f7;
+      color: #c026d3;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      border: 1px solid #e2e8f0;
+      font-weight: 600;
+    }
+
+    /* Tables */
+    .table-responsive {
+      overflow-x: auto;
+      margin: 20px 0;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    .styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      text-align: left;
+      font-size: 0.94rem;
+    }
+
+    .styled-table th {
+      background: #f1f5f9;
+      color: var(--sf-navy);
+      font-weight: 700;
+      padding: 12px 16px;
+      border-bottom: 2px solid #cbd5e1;
+    }
+
+    .styled-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #334155;
+    }
+
+    .styled-table tr:hover {
+      background: #f8fafc;
+    }
+
+    /* Callout Boxes */
+    .callout-box {
+      border-radius: var(--radius-md);
+      padding: 18px 20px;
+      margin: 20px 0;
+      border-left: 4px solid;
+    }
+
+    .callout-box.info {
+      background: #f0f9ff;
+      border-color: #0284c7;
+    }
+    .callout-box.info .callout-title { color: #0369a1; }
+
+    .callout-box.tip {
+      background: #fdf4ff;
+      border-color: #c084fc;
+    }
+    .callout-box.tip .callout-title { color: #7e22ce; }
+
+    .callout-box.warning {
+      background: #fffbeb;
+      border-color: #f59e0b;
+    }
+    .callout-box.warning .callout-title { color: #b45309; }
+
+    .callout-box.important {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+    .callout-box.important .callout-title { color: #1d4ed8; }
+
+    .callout-box.caution {
+      background: #fef2f2;
+      border-color: #ef4444;
+    }
+    .callout-box.caution .callout-title { color: #b91c1c; }
+
+    .callout-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .callout-body {
+      color: #334155;
+      font-size: 0.95rem;
+    }
+
+    hr.section-divider {
+      border: 0;
+      height: 1px;
+      background: #e2e8f0;
+      margin: 32px 0;
+    }
+
+    /* Image Container */
+    .doc-img-container {
+      margin: 20px 0;
+      text-align: center;
+    }
+    .doc-img {
+      max-width: 100%;
+      border-radius: var(--radius-md);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border: 1px solid var(--border-color);
+    }
+    .img-caption {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    /* Back to top button */
+    .back-to-top {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--sf-blue);
+      color: white;
+      padding: 10px 16px;
+      border-radius: 24px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(1, 118, 211, 0.4);
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      z-index: 99;
+    }
+
+    .back-to-top:hover {
+      background: var(--sf-dark-blue);
+      transform: translateY(-2px);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 32px 20px;
+      color: #64748b;
+      font-size: 0.88rem;
+      border-top: 1px solid var(--border-color);
+      background: #ffffff;
+      margin-top: 48px;
+    }
+
+    @media print {
+      .nav-wrapper, .back-to-top, .copy-btn, #progress-bar { display: none !important; }
+      .section-card { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div id="progress-bar"></div>
+
+  <!-- Hero Header -->
+  <header class="hero">
+    <h1>Complete Guide: Integrating Native Desktop Notifications &amp; Background Alerts into Salesforce LWC</h1>
+    <p>Enterprise Technical Documentation &amp; Operational Reference</p>
+    <div class="badge-bar">
+      <span class="badge success">Production Ready</span>
+      <span class="badge ">Salesforce Lightning</span>
+      <span class="badge ">Enterprise Architecture</span>
+      <span class="badge ">Complete Implementation</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Sticky Navigation Tabs -->
+    <div class="nav-wrapper">
+      <nav class="nav-tabs">
+        <a href="#sec-1-executive-summary-purpose" class="nav-tab">Executive Summary &amp; Purpose</a>
+        <a href="#sec-2-high-level-architectural-flow" class="nav-tab">High-Level Architectural Flow</a>
+        <a href="#sec-3-core-browser-apis-utilized" class="nav-tab">Core Browser APIs Utilized</a>
+        <a href="#sec-4-detailed-component-implementation" class="nav-tab">Detailed Component Implementation</a>
+        <a href="#sec-5-security-salesforce-lightning-web-security-lws" class="nav-tab">Security &amp; Salesforce Lightning Web Security (LWS)</a>
+        <a href="#sec-6-testing-troubleshooting-checklist" class="nav-tab">Testing &amp; Troubleshooting Checklist</a>
+        <a href="#sec-7-reusable-blueprint-for-other-lwcs" class="nav-tab">Reusable Blueprint for Other LWCs</a>
+      </nav>
+    </div>
+
+    <!-- Document Content Sections -->
+    <section class="section-card" id="sec-1-executive-summary-purpose">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 1. Executive Summary & Purpose</h2>
+
+    <div class="visual-illustration-card">
+      <div class="illustration-header">
+        <span class="illustration-tag">Client-Side Architecture & Notification Engine</span>
+        <h3>Native OS Desktop Notification & Page Visibility Workflow</h3>
+      </div>
+      <svg viewBox="0 0 960 360" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+        <!-- Browser Window Mockup -->
+        <rect x="40" y="40" width="460" height="280" rx="10" fill="#1e293b" stroke="#334155" stroke-width="2"/>
+        <!-- Window Title Bar -->
+        <rect x="40" y="40" width="460" height="38" rx="10" fill="#0f172a"/>
+        <circle cx="60" cy="59" r="6" fill="#ef4444"/>
+        <circle cx="80" cy="59" r="6" fill="#f59e0b"/>
+        <circle cx="100" cy="59" r="6" fill="#10b981"/>
+        
+        <!-- Active Tab with Pulsing Indicator -->
+        <rect x="120" y="46" width="240" height="32" rx="6" fill="#1e293b" stroke="#0ea5e9" stroke-width="1.5"/>
+        <circle cx="136" cy="62" r="5" fill="#f43f5e">
+          <animate attributeName="opacity" values="1;0.2;1" dur="1.5s" repeatCount="indefinite"/>
+        </circle>
+        <text x="148" y="66" fill="#f8fafc" font-size="11" font-weight="600">🔔 (1) New Reply Ready | Salesforce</text>
+        
+        <!-- Background Tab State -->
+        <rect x="60" y="100" width="420" height="60" rx="8" fill="rgba(15,23,42,0.6)" stroke="#475569"/>
+        <text x="80" y="125" fill="#94a3b8" font-size="12" font-weight="bold">Document State:</text>
+        <text x="195" y="125" fill="#f43f5e" font-size="12" font-family="monospace">document.hidden === true</text>
+        <text x="80" y="145" fill="#94a3b8" font-size="12" font-weight="bold">Focus State:</text>
+        <text x="175" y="145" fill="#f43f5e" font-size="12" font-family="monospace">!document.hasFocus()</text>
+
+        <!-- LWC Bell State -->
+        <rect x="60" y="175" width="420" height="120" rx="8" fill="rgba(15,23,42,0.6)" stroke="#0284c7"/>
+        <text x="80" y="200" fill="#38bdf8" font-size="13" font-weight="bold">LWC Notification Controller</text>
+        <text x="80" y="222" fill="#cbd5e1" font-size="11">• Notification.permission === "granted"</text>
+        <text x="80" y="240" fill="#cbd5e1" font-size="11">• In-Flight Long Callout Detected (>2000ms)</text>
+        <text x="80" y="258" fill="#cbd5e1" font-size="11">• Dispatches Native Web Notification with Sound & Icon</text>
+        <text x="80" y="276" fill="#cbd5e1" font-size="11">• window.focus() on notification click</text>
+
+        <!-- OS Desktop Notification Toast Card (macOS / Windows 11 Style) -->
+        <g transform="translate(540, 70)">
+          <rect x="0" y="0" width="380" height="160" rx="14" fill="rgba(30, 41, 59, 0.95)" stroke="#38bdf8" stroke-width="2" filter="url(#glow)"/>
+          
+          <!-- App Header -->
+          <rect x="16" y="16" width="32" height="32" rx="8" fill="#0176D3"/>
+          <text x="24" y="38" fill="#ffffff" font-size="18" font-weight="bold">☁️</text>
+          <text x="60" y="32" fill="#ffffff" font-size="14" font-weight="bold">Salesforce Copilot • Edge Comms</text>
+          <text x="60" y="46" fill="#94a3b8" font-size="11">Just now • Native Desktop Toast</text>
+
+          <!-- Notification Body -->
+          <text x="20" y="80" fill="#f1f5f9" font-size="13" font-weight="600">360° Account Dossier Ready 🚀</text>
+          <text x="20" y="100" fill="#cbd5e1" font-size="12">Health Score 88/100, Usage 342h, SLA Enterprise.</text>
+          <text x="20" y="118" fill="#94a3b8" font-size="11">Click anywhere to return directly to this record.</text>
+
+          <!-- Action Button -->
+          <rect x="250" y="124" width="115" height="26" rx="6" fill="#0284c7"/>
+          <text x="307" y="141" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">Open Salesforce ↗</text>
+        </g>
+
+        <!-- Trigger Arrow -->
+        <path d="M 480 200 C 510 200, 520 150, 540 150" stroke="#f43f5e" stroke-width="3" stroke-dasharray="6,4" fill="none"/>
+        <text x="485" y="170" fill="#f43f5e" font-size="11" font-weight="bold">Trigger Alert</text>
+      </svg>
+    </div>
+  
+<p>This document provides a comprehensive technical guide and architectural reference for implementing <strong>Native OS-Level Desktop Notifications and Background Tab Alerts</strong> in the Salesforce Lightning Web Component (<strong><code class="inline-code">slackBotAgent</code></strong>).</p>
+<h3 class="sub-title">The Business & User Problem:</h3>
+<p>When users interact with enterprise AI agents (such as Google Gemini 3.6 Flash and Salesforce MCP actions), complex data retrieval (account vitals, email summarization, calendar scheduling) typically requires <strong>2 to 4 seconds</strong>.</p>
+<p>In high-paced customer success or sales workflows, users rarely stare at a loading indicator. Instead, they multitask:</p>
+<ul class="styled-list">
+<li>Switching to another application (e.g., Slack, Microsoft Teams, Excel, VS Code).</li>
+<li>Switching to another browser tab (e.g., Gmail, Jira, Calendar).</li>
+<li>Minimizing the browser window entirely.</li>
+</ul>
+<h3 class="sub-title">The Solution:</h3>
+<p>By integrating the standard <strong>HTML5 Web Notifications API</strong> and <strong>Page Visibility API</strong> directly into the LWC:</p>
+<ol class="styled-ordered-list">
+<li><strong>Zero Disruption when Focused</strong>: If the user is actively watching the chat screen, no notification popups are shown.</li>
+<li><strong>Instant Desktop Alert when Away</strong>: If the user has switched windows or tabs (<code class="inline-code">document.hidden === true</code>), a native Windows / macOS notification card pops up on their desktop as soon as the response arrives.</li>
+<li><strong>One-Click Focus</strong>: Clicking the desktop notification instantly brings the user's browser and that specific Salesforce tab back to the foreground.</li>
+<li><strong>Visual Tab Title Pulsing</strong>: The browser tab title pulses with <code class="inline-code">🔔 (1) New Reply Ready | Salesforce</code> until the user returns.</li>
+<li><strong>Full User Control</strong>: A dedicated notification bell icon in the LWC header allows users to grant permissions, toggle alerts on/off, or mute notifications at any time.</li>
+</ol>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-2-high-level-architectural-flow">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 2. High-Level Architectural Flow</h2>
+
+            <div class="diagram-box">
+              <div class="diagram-label">📊 Interactive Architecture Diagram</div>
+              <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor User as Salesforce User (CSM/AE)
+    participant LWC as slackBotAgent LWC (Browser Client)
+    participant WebAPI as Browser Engine (Chrome/Edge)
+    participant OS as Operating System (Windows / macOS)
+    participant Apex as SlackBotAgentController.cls
+
+    User->>LWC: Enters prompt or command (e.g., /account-brief)
+    LWC->>Apex: Asynchronous callout to Gemini & MCP Server
+    
+    Note over User,LWC: User minimizes browser or switches to another app (Slack, Excel)
+    LWC->>WebAPI: Checks document.hidden || !document.hasFocus() (Evaluates to TRUE)
+
+    Apex-->>LWC: Response payload arrives (HTTP 200)
+    LWC->>LWC: Appends bot response bubble to chat feed
+
+    rect rgb(240, 248, 255)
+        Note over LWC,OS: Background Alert Evaluation
+        LWC->>WebAPI: Verifies Notification.permission === 'granted' && notificationsEnabled
+        LWC->>OS: new Notification("Slack Bot Agent: Edge Communications", { body, renotify: true })
+        OS-->>User: Pops up native desktop banner in bottom-right corner of laptop screen
+        LWC->>WebAPI: Starts tab title pulsing: "🔔 (1) New Reply Ready | Salesforce"
+    end
+
+    User->>OS: Clicks the desktop notification banner
+    OS->>WebAPI: Triggers notification.onclick event
+    WebAPI->>WebAPI: window.focus()
+    LWC->>WebAPI: Clears title pulse & restores original Salesforce title
+    User->>LWC: Views full response card in Salesforce
+              </div>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-3-core-browser-apis-utilized">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 3. Core Browser APIs Utilized</h2>
+<p>This feature requires <strong>zero third-party libraries</strong>, zero external npm packages, and zero server-side notification infrastructure. It relies entirely on standard W3C Web APIs supported natively by Chrome, Microsoft Edge, Firefox, Brave, and Safari.</p>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Web API</th><th>Method / Property</th><th>Purpose in LWC</th></tr></thead><tbody><tr><td><strong>Notifications API</strong></td><td><code class="inline-code">window.Notification</code></td><td>Interface to trigger OS-level notification banners.</td></tr><tr><td><strong>Permission Handshake</strong></td><td><code class="inline-code">Notification.requestPermission()</code></td><td>Solicits browser consent for the Salesforce domain.</td></tr><tr><td><strong>Permission State</strong></td><td><code class="inline-code">Notification.permission</code></td><td>Reads status (<code class="inline-code">&#039;granted&#039;</code>, <code class="inline-code">&#039;denied&#039;</code>, <code class="inline-code">&#039;default&#039;</code>).</td></tr><tr><td><strong>Page Visibility API</strong></td><td><code class="inline-code">document.hidden</code></td><td>Detects if the Salesforce tab is in the background or minimized.</td></tr><tr><td><strong>Focus Detection API</strong></td><td><code class="inline-code">document.hasFocus()</code></td><td>Verifies if the browser window currently has user focus.</td></tr><tr><td><strong>Window Control API</strong></td><td><code class="inline-code">window.focus()</code></td><td>Programmatically brings the Salesforce window to the front when clicked.</td></tr><tr><td><strong>Document Title API</strong></td><td><code class="inline-code">document.title</code></td><td>Dynamically updates the browser tab bar text.</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-4-detailed-component-implementation">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 4. Detailed Component Implementation</h2>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 1</span>
+                <h4>Header UI & Toggle Button (<code class="inline-code">slackBotAgent.html</code>)</h4>
+              </div>
+          <p>In the component header, an interactive notification button is placed alongside the session reset button. Its icon, styling variant, and tooltip update dynamically based on the permission state.</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">HTML</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-html">&lt;!-- Notification Bell Toggle in Header --&gt;
+&lt;div class=&quot;slds-grid slds-grid_vertical-align-center&quot;&gt;
+    &lt;lightning-button-icon
+        icon-name={notificationIconName}
+        variant={notificationButtonVariant}
+        size=&quot;small&quot;
+        title={notificationTooltip}
+        alternative-text=&quot;Toggle Desktop Notifications&quot;
+        class=&quot;slds-m-right_xx-small&quot;
+        onclick={handleToggleNotifications}&gt;
+    &lt;/lightning-button-icon&gt;
+    &lt;lightning-button-icon
+        icon-name=&quot;utility:refresh&quot;
+        variant=&quot;border-filled&quot;
+        size=&quot;small&quot;
+        title=&quot;Reset Chat Screen&quot;
+        alternative-text=&quot;Reset Session&quot;
+        onclick={handleResetSession}&gt;
+    &lt;/lightning-button-icon&gt;
+&lt;/div&gt;</code></pre>
+            </div>
+          <hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 2</span>
+                <h4>Reactive State & Permission Controller (<code class="inline-code">slackBotAgent.js</code>)</h4>
+              </div>
+          <h4 class="sub-sub-title">A. Initializing State & Dynamic Getters</h4>
+<p>The component tracks permission status on initialization and computes button visual states:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">JAVASCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-javascript">@track notificationsEnabled = true;
+@track notificationPermission = (typeof window !== &#039;undefined&#039; &amp;&amp; &#039;Notification&#039; in window) 
+    ? Notification.permission 
+    : &#039;unsupported&#039;;
+
+originalDocumentTitle = &#039;&#039;;
+titleFlashInterval = null;
+
+get notificationIconName() {
+    if (this.notificationPermission === &#039;granted&#039; &amp;&amp; this.notificationsEnabled) {
+        return &#039;utility:notification&#039;;
+    }
+    return &#039;utility:volume_off&#039;;
+}
+
+get notificationButtonVariant() {
+    return (this.notificationPermission === &#039;granted&#039; &amp;&amp; this.notificationsEnabled) 
+        ? &#039;brand&#039; 
+        : &#039;border-filled&#039;;
+}
+
+get notificationTooltip() {
+    if (this.notificationPermission === &#039;granted&#039;) {
+        return this.notificationsEnabled 
+            ? &#039;Desktop Notifications: ON (Click to mute)&#039; 
+            : &#039;Desktop Notifications: OFF (Click to unmute)&#039;;
+    }
+    return &#039;Click to enable Desktop Notifications&#039;;
+}</code></pre>
+            </div>
+          <h4 class="sub-sub-title">B. Permission Toggle Handler</h4>
+<p>When the user clicks the bell icon, the component handles all permission states with user-friendly SLDS toasts:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">JAVASCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-javascript">async handleToggleNotifications() {
+    if (typeof window === &#039;undefined&#039; || !(&#039;Notification&#039; in window)) {
+        this.dispatchEvent(new ShowToastEvent({
+            title: &#039;Notifications Unsupported&#039;,
+            message: &#039;Desktop Notifications are not supported by this browser environment.&#039;,
+            variant: &#039;info&#039;
+        }));
+        return;
+    }
+
+    if (Notification.permission === &#039;default&#039;) {
+        try {
+            const perm = await Notification.requestPermission();
+            this.notificationPermission = perm;
+            this.notificationsEnabled = (perm === &#039;granted&#039;);
+            if (perm === &#039;granted&#039;) {
+                this.dispatchEvent(new ShowToastEvent({
+                    title: &#039;Notifications Enabled&#039;,
+                    message: &#039;You will receive desktop alerts when AI responses complete in the background.&#039;,
+                    variant: &#039;success&#039;
+                }));
+            }
+        } catch (e) {
+            console.warn(&#039;Could not request notification permission:&#039;, e);
+        }
+    } else if (Notification.permission === &#039;granted&#039;) {
+        this.notificationsEnabled = !this.notificationsEnabled;
+        this.dispatchEvent(new ShowToastEvent({
+            title: this.notificationsEnabled ? &#039;Notifications Unmuted&#039; : &#039;Notifications Muted&#039;,
+            message: this.notificationsEnabled ? &#039;Desktop alerts are active.&#039; : &#039;Desktop alerts muted.&#039;,
+            variant: &#039;info&#039;
+        }));
+    } else if (Notification.permission === &#039;denied&#039;) {
+        this.dispatchEvent(new ShowToastEvent({
+            title: &#039;Notifications Blocked&#039;,
+            message: &#039;Notifications are blocked in your browser settings. Please allow notifications for this site to enable desktop alerts.&#039;,
+            variant: &#039;warning&#039;
+        }));
+    }
+}</code></pre>
+            </div>
+          <hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 3</span>
+                <h4>Triggering Permissions on User Action</h4>
+              </div>
+          <p>Browsers enforce that <code class="inline-code">Notification.requestPermission()</code> can only be triggered by a direct user gesture (such as a mouse click or keystroke). To provide zero-friction onboarding, the component proactively initiates the permission request when the user sends their first message:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">JAVASCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-javascript">async handleSendMessage() {
+    const text = (this.inputMessage || &#039;&#039;).trim();
+    if (!text || this.isThinking) return;
+
+    // Proactively request notification permission on user gesture if still default
+    if (typeof window !== &#039;undefined&#039; &amp;&amp; &#039;Notification&#039; in window &amp;&amp; Notification.permission === &#039;default&#039;) {
+        Notification.requestPermission().then(perm =&gt; {
+            this.notificationPermission = perm;
+            this.notificationsEnabled = (perm === &#039;granted&#039;);
+        }).catch(() =&gt; {});
+    }
+
+    this.inputMessage = &#039;&#039;;
+    this.addUserMessage(text);
+    this.isThinking = true;
+
+    try {
+        const res = await sendMessage({
+            sessionId: this.sessionId,
+            userMessage: text,
+            accountId: this.recordId
+        });
+
+        this.addBotMessage(res.messageText, res.cardData, res.slackThreadUrl, res.messageType);
+
+        // DISPATCH NOTIFICATION IF USER IS AWAY
+        this.dispatchDesktopNotification(res.messageText);
+
+    } catch (err) {
+        // error handling...
+    } finally {
+        this.isThinking = false;
+    }
+}</code></pre>
+            </div>
+          <hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 4</span>
+                <h4>Notification Dispatch & Content Formatting</h4>
+              </div>
+          <p>When the response arrives, <code class="inline-code">dispatchDesktopNotification</code> evaluates visibility, sanitizes the markdown text, and issues the native desktop banner:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">JAVASCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-javascript">dispatchDesktopNotification(responseText) {
+    // 1. Evaluate user presence: Suppress if user is actively watching
+    const isAway = (typeof document !== &#039;undefined&#039;) &amp;&amp; (document.hidden || !document.hasFocus());
+    if (!isAway) return;
+
+    // 2. Evaluate permissions
+    if (!this.notificationsEnabled || typeof window === &#039;undefined&#039; || !(&#039;Notification&#039; in window)) return;
+    if (Notification.permission !== &#039;granted&#039;) {
+        this.flashDocumentTitle();
+        return;
+    }
+
+    try {
+        // Strip markdown tags (*, `, #) for a clean plain-text system banner
+        let preview = (responseText || &#039;Response has finished loading.&#039;)
+            .replace(/\*\*/g, &#039;&#039;)
+            .replace(/\*/g, &#039;&#039;)
+            .replace(/`/g, &#039;&#039;)
+            .replace(/^• /gm, &#039;&#039;)
+            .replace(/\n+/g, &#039; &#039;)
+            .trim();
+
+        if (preview.length &gt; 110) {
+            preview = preview.substring(0, 107) + &#039;...&#039;;
+        }
+
+        const notifTitle = this.accountName 
+            ? `Slack Bot Agent: ${this.accountName}` 
+            : &#039;Slack Bot Agent&#039;;
+
+        const notification = new Notification(notifTitle, {
+            body: preview,
+            tag: &#039;slack-bot-agent-reply&#039;,
+            renotify: true
+        });
+
+        // Clicking brings Salesforce back to the front
+        notification.onclick = () =&gt; {
+            window.focus();
+            this.clearTitleFlash();
+            notification.close();
+        };
+
+        // Also initiate visual tab title pulse
+        this.flashDocumentTitle();
+    } catch (e) {
+        console.warn(&#039;Desktop notification dispatch notice:&#039;, e);
+        this.flashDocumentTitle();
+    }
+}</code></pre>
+            </div>
+          <hr class="section-divider"/>
+
+            <div class="step-card">
+              <div class="step-header">
+                <span class="step-badge">STEP 5</span>
+                <h4>Browser Tab Title Pulsing</h4>
+              </div>
+          <p>If the user is in another tab, the browser tab bar pulses with an unread badge until the tab is clicked:</p>
+
+            <div class="code-container">
+              <div class="code-header">
+                <span class="lang-tag">JAVASCRIPT</span>
+                <button class="copy-btn" onclick="copyCode(this)">Copy Code</button>
+              </div>
+              <pre><code class="language-javascript">flashDocumentTitle() {
+    if (typeof document === &#039;undefined&#039;) return;
+    if (!this.originalDocumentTitle) {
+        this.originalDocumentTitle = document.title;
+    }
+
+    let toggle = false;
+    if (this.titleFlashInterval) clearInterval(this.titleFlashInterval);
+
+    this.titleFlashInterval = setInterval(() =&gt; {
+        if (!document.hidden &amp;&amp; document.hasFocus()) {
+            this.clearTitleFlash();
+            return;
+        }
+        document.title = toggle 
+            ? &#039;🔔 (1) New Reply Ready | Salesforce&#039; 
+            : this.originalDocumentTitle;
+        toggle = !toggle;
+    }, 1500);
+
+    window.addEventListener(&#039;focus&#039;, () =&gt; this.clearTitleFlash(), { once: true });
+}
+
+clearTitleFlash() {
+    if (this.titleFlashInterval) {
+        clearInterval(this.titleFlashInterval);
+        this.titleFlashInterval = null;
+    }
+    if (this.originalDocumentTitle &amp;&amp; typeof document !== &#039;undefined&#039;) {
+        document.title = this.originalDocumentTitle;
+    }
+}</code></pre>
+            </div>
+          <hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-5-security-salesforce-lightning-web-security-lws">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 5. Security & Salesforce Lightning Web Security (LWS)</h2>
+<ul class="styled-list">
+<li><strong>Zero CSP Violations</strong>: All calls (<code class="inline-code">Notification</code>, <code class="inline-code">document.hidden</code>, <code class="inline-code">document.title</code>) use built-in browser APIs. No third-party domains, CDNs, or external script tags are loaded.</li>
+<li><strong>LWS & Locker Service Compatibility</strong>: Modern Salesforce orgs run <strong>Lightning Web Security (LWS)</strong>, which permits standard DOM APIs. Under legacy Locker Service, defensive guards (<code class="inline-code">&#039;Notification&#039; in window</code>, <code class="inline-code">try / catch</code>) guarantee that the component will never throw runtime exceptions even if a browser restricts notification creation.</li>
+<li><strong>Domain Sandboxing</strong>: Permission is granted to your Salesforce Lightning domain (<code class="inline-code">https://*.develop.my.salesforce.com</code>). It does not leak credentials or sensitive session data.</li>
+</ul>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-6-testing-troubleshooting-checklist">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 6. Testing & Troubleshooting Checklist</h2>
+<h3 class="sub-title">How to Test Live in Chrome or Edge:</h3>
+<ol class="styled-ordered-list">
+<li>Open any Account page with the <code class="inline-code">slackBotAgent</code> component (e.g., <em>Edge Communications</em>).</li>
+<li>Look at the header: The bell icon will display <code class="inline-code">utility:volume_off</code> (if default) or <code class="inline-code">utility:notification</code> (if already granted).</li>
+<li>Click the <strong>Bell Icon</strong> or type <code class="inline-code">/account-brief</code> into the chat box.</li>
+<li>When prompted by Chrome: <em>"Allow https://... to send notifications?"</em> ➔ Click <strong>Allow</strong>.</li>
+<li>Submit a command (e.g. <code class="inline-code">/account-brief</code> or <code class="inline-code">/summarize-thread</code>).</li>
+<li><strong>Immediately switch to another window</strong> (e.g., open Slack or VS Code) or minimize Chrome.</li>
+<li>Within 2–3 seconds:</li>
+</ol>
+<ul class="styled-list">
+<li>A native Windows/Mac notification banner will pop up in the corner of your screen.</li>
+<li>The browser tab title will flash: <code class="inline-code">🔔 (1) New Reply Ready | Salesforce</code>.</li>
+</ul>
+<ol class="styled-ordered-list">
+<li>Click the notification banner ➔ Chrome immediately returns to the front and displays the completed response card!</li>
+</ol>
+<h3 class="sub-title">Troubleshooting Scenarios:</h3>
+<div class="table-responsive"><table class="styled-table"><thead><tr><th>Issue</th><th>Root Cause</th><th>Remediation</th></tr></thead><tbody><tr><td><strong>No popup appears when testing</strong></td><td>The user remained on the active tab.</td><td>Notifications are intentionally suppressed when <code class="inline-code">document.hidden === false</code>. Switch to another application immediately after hitting Enter.</td></tr><tr><td><strong>Notification permission is 'denied'</strong></td><td>User clicked "Block" previously.</td><td>In Chrome: Click the <strong>Padlock / Tune icon</strong> to the left of the URL bar ➔ Set <strong>Notifications</strong> to <strong>Allow</strong> ➔ Refresh page.</td></tr><tr><td><strong>Windows Action Center suppresses notification</strong></td><td>Windows "Focus Assist" or "Do Not Disturb" is turned ON.</td><td>On Windows 11: Check the system clock/tray in the taskbar. Disable "Focus Assist" / "Do Not Disturb" to allow banner popups.</td></tr><tr><td><strong>Tab title flashes but no desktop banner</strong></td><td>Browser or OS notification banner settings disabled.</td><td>The tab title flash functions as an automatic visual fallback, ensuring the user is still notified.</td></tr></tbody></table></div>
+<hr class="section-divider"/>
+</section>
+<section class="section-card" id="sec-7-reusable-blueprint-for-other-lwcs">
+<h2 class="section-title"><span class="title-badge">SECTION</span> 7. Reusable Blueprint for Other LWCs</h2>
+<p>To add this desktop notification behavior to any other Lightning Web Component in your org (e.g., long-running batch job monitors, async report generators, or case copilot):</p>
+<ol class="styled-ordered-list">
+<li><strong>Add state properties</strong>: <code class="inline-code">notificationsEnabled</code>, <code class="inline-code">notificationPermission</code>.</li>
+<li><strong>Add visibility check</strong>: Check <code class="inline-code">(document.hidden || !document.hasFocus())</code>.</li>
+<li><strong>Dispatch banner</strong>: Call <code class="inline-code">new Notification(title, { body, tag })</code> inside the async promise resolution.</li>
+<li><strong>Attach onclick</strong>: Attach <code class="inline-code">notification.onclick = () =&gt; window.focus()</code>.</li>
+<li><strong>Flash document.title</strong>: Pulse title with interval until <code class="inline-code">focus</code> event fires.</li>
+</ol>
+</section>
+
+  </div>
+
+  <a href="#" class="back-to-top">↑ Top</a>
+
+  <footer>
+    <strong>Salesforce Lightning Platform • Enterprise AI Integration Guide</strong><br/>
+    Internal Engineering Reference & Operational Playbook • Org: <code>learn_dc</code>
+  </footer>
+
+  <script>
+    function copyCode(btn) {
+      const container = btn.closest('.code-container');
+      const code = container.querySelector('code').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const origText = btn.innerText;
+        btn.innerText = '✓ Copied!';
+        btn.style.background = '#2EB67D';
+        btn.style.borderColor = '#2EB67D';
+        btn.style.color = '#ffffff';
+        setTimeout(() => {
+          btn.innerText = origText;
+          btn.style.background = '';
+          btn.style.borderColor = '';
+          btn.style.color = '';
+        }, 2000);
+      });
+    }
+
+    // Scroll Progress & Active Tab Highlighting
+    window.addEventListener('scroll', () => {
+      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / height) * 100;
+      document.getElementById('progress-bar').style.width = scrolled + '%';
+
+      const sections = document.querySelectorAll('.section-card');
+      const navTabs = document.querySelectorAll('.nav-tab');
+      let current = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        if (winScroll >= sectionTop - 140) {
+          current = section.getAttribute('id');
+        }
+      });
+      navTabs.forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.getAttribute('href') === '#' + current) {
+          tab.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
+  

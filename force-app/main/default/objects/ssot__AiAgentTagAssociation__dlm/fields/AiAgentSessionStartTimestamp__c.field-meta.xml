@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>AiAgentSessionStartTimestamp__c</fullName>
+    <label>AI Agent Session Start Timestamp</label>
+    <mktDataModelFieldAttributes>
+        <definitionCreationType>Standard</definitionCreationType>
+        <isDynamicLookup>false</isDynamicLookup>
+        <labelOverride>AI Agent Session Start Timestamp</labelOverride>
+        <masterLabel>AI Agent Session Start Timestamp</masterLabel>
+        <refAttrDeveloperName>AiAgentSessionStartTimestamp</refAttrDeveloperName>
+        <usageTag>None</usageTag>
+    </mktDataModelFieldAttributes>
+    <required>false</required>
+    <type>DateTime</type>
+</CustomField>

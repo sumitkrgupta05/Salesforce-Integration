@@ -1,0 +1,39 @@
+<template>
+    <lightning-card title="Student Form" icon-name="custom:custom16">
+        <div class="slds-var-p-around_medium">
+            <lightning-record-edit-form
+                record-id={recordId}
+                object-api-name={objectApiName}
+                onsuccess={handleSuccess}
+                onerror={handleError}>
+                
+                <lightning-messages></lightning-messages>
+                
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-var-m-bottom_small">
+                        <lightning-input-field field-name="Name"></lightning-input-field>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-var-m-bottom_small">
+                        <lightning-input-field field-name="Roll_Number__c"></lightning-input-field>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-var-m-bottom_small">
+                        <lightning-input-field field-name="Class__c"></lightning-input-field>
+                    </div>
+                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-var-m-bottom_small">
+                        <lightning-input-field field-name="Parent_Name__c"></lightning-input-field>
+                    </div>
+                </div>
+
+                <div class="slds-var-m-top_medium slds-text-align_right">
+                    <lightning-button
+                        class="slds-var-m-left_x-small"
+                        variant="brand"
+                        type="submit"
+                        name="save"
+                        label="Save Student">
+                    </lightning-button>
+                </div>
+            </lightning-record-edit-form>
+        </div>
+    </lightning-card>
+</template>

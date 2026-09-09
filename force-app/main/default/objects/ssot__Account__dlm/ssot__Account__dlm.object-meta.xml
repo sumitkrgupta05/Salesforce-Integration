@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <mktDataModelAttributes>
+        <creationType>Standard</creationType>
+        <dataModelTaxonomy>Salesforce_SFDCReferenceModel_0_93</dataModelTaxonomy>
+        <dataSpaceName>default</dataSpaceName>
+        <description>How the party want to interact with your enterprise e.g. have multiple billing or service accounts, can be hierarchical in nature and normally one particular business unit within the company owns the account.</description>
+        <isEnabled>true</isEnabled>
+        <isSegmentable>true</isSegmentable>
+        <isSqlDmo>false</isSqlDmo>
+        <isUsedForMetrics>false</isUsedForMetrics>
+        <labelOverride>Account</labelOverride>
+        <masterLabel>Account</masterLabel>
+        <objectCategory>Salesforce_SFDCReferenceModel_0_93.Profile</objectCategory>
+        <referenceEntityGroup>Account</referenceEntityGroup>
+        <referenceEntityName>Account</referenceEntityName>
+        <referenceEntitySubjectArea>Account</referenceEntitySubjectArea>
+    </mktDataModelAttributes>
+</CustomObject>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MktDataConnection xmlns="http://soap.sforce.com/2006/04/metadata">
+    <accessType>Shared</accessType>
+    <connectionMethod>Ingress</connectionMethod>
+    <connectionStatus>ACTIVE</connectionStatus>
+    <connectorName>AIPlatform</connectorName>
+    <externalRecordIdentifier>afddd901-2321-441f-9df2-726b9a87b66b</externalRecordIdentifier>
+    <isActivityEnabled>false</isActivityEnabled>
+    <isSentosEnabled>false</isSentosEnabled>
+    <masterLabel>AIPlatform_RAG_QUALITY_MONITORING_GA</masterLabel>
+    <parameters>
+        <fullName>AIPlatform_RAG_QUALITY_MONITORING_GA_customerOrg</fullName>
+        <paramName>customerOrg</paramName>
+        <value>true</value>
+    </parameters>
+    <parameters>
+        <fullName>AIPlatform_RAG_QUALITY_MONITORING_GA_providerName</fullName>
+        <paramName>providerName</paramName>
+        <value>RAG_QUALITY_MONITORING_GA</value>
+    </parameters>
+    <shouldAutoCreatePolicies>false</shouldAutoCreatePolicies>
+</MktDataConnection>

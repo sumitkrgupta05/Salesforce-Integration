@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DataStreamDefinition xmlns="http://soap.sforce.com/2006/04/metadata">
+    <areHeadersIncludedInFile>false</areHeadersIncludedInFile>
+    <bulkIngest>false</bulkIngest>
+    <creationType>Custom</creationType>
+    <dataConnector>AgentOpt_5927f62b_99bb_41b8_9d84_1df076d76e03</dataConnector>
+    <dataConnectorType>IngestApi</dataConnectorType>
+    <dataExtractMethods>FULL_REFRESH</dataExtractMethods>
+    <dataPlatformDataSetItemName>INGESTAPI</dataPlatformDataSetItemName>
+    <dataSource>AgentOpt_5927f62b_99bb_41b8_9d84_1df076d76e03</dataSource>
+    <isLimitedToNewFiles>false</isLimitedToNewFiles>
+    <isMissingFileFailure>false</isMissingFileFailure>
+    <masterLabel>AgentOpt-Tag</masterLabel>
+    <mktDataLakeObject>AgentOpt_Tag_C57690BE__dll</mktDataLakeObject>
+    <mktDataTranObject>AgentOpt_Tag_C57690BE</mktDataTranObject>
+</DataStreamDefinition>

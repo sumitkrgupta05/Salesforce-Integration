@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomMetadata xmlns="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <label>Default Setting</label>
+    <protected>false</protected>
+    <values>
+        <field>Token_Endpoint__c</field>
+        <value xsi:type="xsd:string">https://oauth2.googleapis.com/token</value>
+    </values>
+    <values>
+        <field>Certificate_Name__c</field>
+        <value xsi:type="xsd:string"></value>
+    </values>
+    <values>
+        <field>Private_Key__c</field>
+        <value xsi:type="xsd:string">-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCYUFNdrEqBjBLF
+So4Bomoxp//m80WUieCn6xVSPt4YHpvwBMvLNLOWpvb+bgt1HEjWJBC0his+mtiz
+c4d+eJZYLXi6aTIBbE2SAOKFRf1JprJEkoVI3b5RUGL74q8biDdxbVNnx63AfJC3
+5kHNSeH79ISCFdmJHT1x7DNHdg5tW8I7Yo8s3Mi9empXkzn0UPCq0URcUM1Q/Bha
+oe0rjkyM/0nM6hi65zhJW0jIyKail+zC8sTz2K/LWUdJialkMnVgY2zhalzE+l3X
+1aEX6cbN3g2W5mla6/E5g+vTK6PWZ/bxBgiQZTASv1qetCNXmkg8UEKEwl6b6+mE
+1QsPGem3AgMBAAECggEAHkJ3DXkZJDuLzx5MsA5wQoU51cwm2qe5tiKCDeDnhqsu
+F7UcN7a0pw1srId4Rz/jSIfJudOd68Yfnycol/ulAsel4ILdqGK31nXOiuOoumUf
+rXfeeudy0/zAbYJPf4zEVwh9NXT6E++rYJ2iHQK8nq2pVZ65pP/mISfn2B6gJyFx
+MSJsMxa7LqlpPpbSsaIsa/9297B9b4AcgHfDkR1h3ZzMFQrgJjsTMHgJ9T6gWg7O
+xJ36wf5QXBxwsha5L6ZP8CS3nMx7h1zmSctRetcyd2Bh6AXqv9ScTD3jeew8UJwp
+ew/xblJZXKPQ0DsmYurO4nkkeBGMvLjmAw/tDMmdAQKBgQDIUn2yWxhflLsQW3tV
+/CDNSzRjta6qdKA/Mr9PDPjUW4dasp9FemGdeL62LCA2NyU/1VWpYApVoj8PYCLg
+0NrZLIFC/4E8Mpxk7F7k/ZQoN1shZpq/Ph5H5txwAMvfEFaRuJKf/VuNz8PHkwie
+3CuepP2BLjjkDxQVVjEtdpbi1wKBgQDCpeSt1jFLPtYBCJjZL4oSQ53DVO2x7A7a
+AnGFU/ekffDclY33pPiPf559vrN/RVHxDIH8gwhtTZRX3zBLZkliCIkPWSO2ttn3
+2CnUwYb8IPR3JvCdLgo30RPd0jjzeWBlUH061dB2eXZ5FztkboKurZSGpIQxhRp4
+AdnlDaU0IQKBgQCoq7ymxsk5AbSYy06IUekUsvQD2OCfKeAcFpC68QM7W24W0jwF
+dkxnGVoLbhAZVkmI/ApKuVE6VYifW6VCgtki77RPQ2//zeWdnOEyEsoDKskS0KAP
+0zAP/rUxoZoH0mvx+uWKzPuf5obErmsdx+j6hZXmhZLlhES2yoJR836MtQKBgQCQ
+7rEtdxVRL8JtFpeo76rhGpO3w98Q4fHVBoi8e98jDdtwg7MnuCCTyLSccIh6tYTj
+9So8eNyndmKEY100Zz8wzaYwVXEwNUprLvtGvarixS8CIW57urJFCVq/ii55q+DI
+z3vPeTE1Zg9+7nt8toR7yCeVcZ40uSUSQl6aHOTrwQKBgE50pFCTlLc+S638KLPA
+SgDr2qgiYf4NXNfCYGvUBmOLAjMJRf4mGyFnBRol0F9zt51EAMb2MwhLqIdgv8cQ
++cPqpDDmY9JM6GQFjpwINuqEnsCsFCyAdmaaeolDY1w6cOQjeg34bClFyGQBkE4P
+flNk2qXSnqurh4lTxJFmSdPq
+-----END PRIVATE KEY-----</value>
+    </values>
+    <values>
+        <field>Service_Account_Email__c</field>
+        <value xsi:type="xsd:string">sf-calendar-service@exalted-justice-507211-v9.iam.gserviceaccount.com</value>
+    </values>
+    <values>
+        <field>Client_Id__c</field>
+        <value xsi:type="xsd:string">105534434070602778731</value>
+    </values>
+    <values>
+        <field>Workspace_User_Email__c</field>
+        <value xsi:type="xsd:string">sumit@skg5.com</value>
+    </values>
+    <values>
+        <field>Webhook_Callback_URL__c</field>
+        <value xsi:type="xsd:string"></value>
+    </values>
+    <values>
+        <field>Gmail_PubSub_Topic__c</field>
+        <value xsi:type="xsd:string">projects/exalted-justice-507211-v9/topics/gmail-notifications</value>
+    </values>
+    <values>
+        <field>Gmail_History_Id__c</field>
+        <value xsi:type="xsd:string">1111</value>
+    </values>
+</CustomMetadata>

@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salesforce ↔ GCP Slackbot ↔ Slack: End-to-End Enterprise Setup Guide</title>
+    <!-- Mermaid JS for Interactive Diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose',
+            flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+            sequence: { useMaxWidth: true, showSequenceNumbers: true }
+        });
+    </script>
+    <style>
+        :root {
+            --sf-blue: #0176D3;
+            --sf-dark-blue: #0b5cab;
+            --sf-navy: #032d60;
+            --slack-aubergine: #4A154B;
+            --slack-green: #2EB67D;
+            --slack-yellow: #ECB22E;
+            --slack-red: #E01E5A;
+            --slack-blue: #36C5F0;
+            --gcp-blue: #4285F4;
+            --bg-light: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-main: #181818;
+            --text-sub: #5c5c5c;
+            --border-color: #e5e5e5;
+            --code-bg: #1e1e24;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-light);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding-bottom: 80px;
+        }
+
+        header.hero {
+            background: linear-gradient(135deg, var(--sf-navy) 0%, #152744 50%, var(--slack-aubergine) 100%);
+            color: white;
+            padding: 48px 32px;
+            text-align: center;
+            border-bottom: 4px solid var(--slack-green);
+        }
+
+        header.hero h1 {
+            font-size: 2.4rem;
+            margin-bottom: 12px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        header.hero p {
+            font-size: 1.15rem;
+            color: #d1d5db;
+            max-width: 850px;
+            margin: 0 auto 20px auto;
+        }
+
+        .badge-bar {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+
+        .badge {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 32px auto;
+            padding: 0 24px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            padding: 6px;
+            margin-bottom: 28px;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+        }
+
+        .nav-tab {
+            flex: 1;
+            text-align: center;
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            border-radius: 8px;
+            color: var(--text-sub);
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .nav-tab:hover {
+            background: #f8fafc;
+            color: var(--sf-blue);
+        }
+
+        .nav-tab.active {
+            background: var(--sf-blue);
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(1, 118, 211, 0.35);
+        }
+
+        .section-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border-color);
+        }
+
+        h2.section-title {
+            font-size: 1.6rem;
+            margin-bottom: 20px;
+            color: var(--sf-navy);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 12px;
+        }
+
+        h3.sub-title {
+            font-size: 1.2rem;
+            margin: 24px 0 12px 0;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        p, li {
+            color: #334155;
+            font-size: 0.98rem;
+            margin-bottom: 12px;
+        }
+
+        ul, ol {
+            padding-left: 24px;
+            margin-bottom: 16px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        .diagram-box {
+            background: #fafbfc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 24px;
+            margin: 20px 0;
+            text-align: center;
+            overflow-x: auto;
+        }
+
+        .step-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .step-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+            border-top: 4px solid var(--sf-blue);
+            position: relative;
+        }
+
+        .step-card.slack-themed {
+            border-top-color: var(--slack-aubergine);
+        }
+
+        .step-card.gcp-themed {
+            border-top-color: var(--gcp-blue);
+        }
+
+        .step-card.success-themed {
+            border-top-color: var(--slack-green);
+        }
+
+        .step-number {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--sf-blue);
+            margin-bottom: 6px;
+        }
+
+        .step-card h4 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            color: #0f172a;
+        }
+
+        pre {
+            background: var(--code-bg);
+            color: #f8f8f2;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.88rem;
+            margin: 14px 0;
+            border: 1px solid #333;
+        }
+
+        code {
+            font-family: 'Consolas', 'Courier New', Courier, monospace;
+        }
+
+        .inline-code {
+            background: #edf2f7;
+            color: #d946ef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-family: monospace;
+        }
+
+        .callout {
+            border-left: 4px solid var(--sf-blue);
+            background: #f0f7ff;
+            padding: 16px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 18px 0;
+        }
+
+        .callout.warning {
+            border-left-color: var(--slack-yellow);
+            background: #fffdf5;
+        }
+
+        .callout.success {
+            border-left-color: var(--slack-green);
+            background: #f2fbf7;
+        }
+
+        .callout h4 {
+            font-size: 1rem;
+            margin-bottom: 6px;
+            color: #0f172a;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .comparison-table th, .comparison-table td {
+            padding: 14px 16px;
+            border: 1px solid #e2e8f0;
+            text-align: left;
+            font-size: 0.92rem;
+        }
+
+        .comparison-table th {
+            background: #f8fafc;
+            color: var(--sf-navy);
+            font-weight: 700;
+        }
+
+        .comparison-table tr:hover {
+            background: #f1f5f9;
+        }
+
+        .footer {
+            text-align: center;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+            margin-top: 48px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HERO HEADER -->
+    <header class="hero">
+        <h1>Salesforce ↔ GCP Slackbot ↔ Slack Integration</h1>
+        <p>Complete Enterprise Configuration Blueprint, Handshake Architecture, and Seamless CSM User Journey.</p>
+        <div class="badge-bar">
+            <span class="badge">Salesforce Lightning (LWC)</span>
+            <span class="badge">Google Cloud Platform (Cloud Run)</span>
+            <span class="badge">Slack Socket / Webhook API</span>
+            <span class="badge">Salesforce Custom MCP Server</span>
+            <span class="badge">Gemini 3.6 Flash</span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- NAVIGATION TABS -->
+        <div class="nav-tabs">
+            <div class="nav-tab active" onclick="showTab('architecture', this)">1. Architecture & Blueprint</div>
+            <div class="nav-tab" onclick="showTab('salesforce-config', this)">2. Salesforce Configurations</div>
+            <div class="nav-tab" onclick="showTab('gcp-slack-config', this)">3. GCP & Slack Setup</div>
+            <div class="nav-tab" onclick="showTab('csm-journey', this)">4. CSM User Journey (Step-by-Step)</div>
+            <div class="nav-tab" onclick="showTab('security-governance', this)">5. Security & Isolation</div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- TAB 1: ARCHITECTURE & BLUEPRINT                                   -->
+        <!-- ================================================================= -->
+        <div id="tab-architecture" class="tab-content">
+            <div class="section-card">
+                <h2 class="section-title">🏛️ End-to-End System Blueprint</h2>
+                <p>
+                    This architecture delivers a unified bridge between <strong>Salesforce Lightning</strong>, 
+                    a <strong>GCP-hosted Slackbot</strong>, and the <strong>Slack Workspace</strong>. 
+                    The CSM accesses the assistant directly within their CRM account record page while preserving bidirectional synchronization with their private Slack mobile and desktop app.
+                </p>
+
+                <div class="diagram-box">
+                    <div class="mermaid">
+graph LR
+    subgraph SF["Salesforce Lightning Platform (CRM)"]
+        CSM["CSM User (Browser Session)"]
+        LWC["slackBotAgent (LWC)"]
+        CTRL["SlackBotAgentController.cls"]
+        AUTH["SlackUserIdentityService.cls"]
+        MCP["Salesforce Custom MCP Server<br/>(LearnDCAgentMCPServer)"]
+        UDB[("User Record DB<br/>Slack_DM_Channel_Id__c")]
+        
+        CSM -->|Clicks Chat| LWC
+        LWC -->|AuraEnabled Calls| CTRL
+        CTRL --> AUTH
+        AUTH -->|Persistent Read/Write| UDB
+    end
+
+    subgraph GCP["Google Cloud Platform (Cloud Run)"]
+        GATEWAY["Slackbot Gateway Service<br/>(Node.js / TypeScript)"]
+        ROUTER["/api/auth/handshake<br/>/api/chat Endpoints"]
+        GEMINI["Gemini 3.6 Flash<br/>(AI Reasoning Engine)"]
+        MCP_CLIENT["Salesforce MCP Client<br/>(salesforceMcpClient.ts)"]
+        
+        GATEWAY --> ROUTER
+        ROUTER --> GEMINI
+        ROUTER --> MCP_CLIENT
+    end
+
+    subgraph SLACK["Slack Enterprise Workspace (T0BU7EDE40P)"]
+        BOT_APP["Slack App: test_agent_app<br/>(A0BU7FHCFEK)"]
+        DM_CHAN["Private 1-on-1 DM Channel<br/>(e.g. D0BUNTVJCQJ)"]
+        SLACK_API["Slack Web APIs<br/>(users.lookup, conversations.open)"]
+        
+        BOT_APP --> DM_CHAN
+    end
+
+    AUTH -.->|1. Signed Handshake| ROUTER
+    ROUTER -->|2. Verify Member & Open DM| SLACK_API
+    SLACK_API -->|3. Return DM Channel ID| ROUTER
+    ROUTER -.->|4. Return Channel & User ID| AUTH
+    
+    CTRL ==>|5. POST Chat Payload| GATEWAY
+    MCP_CLIENT ==>|6. Tool Calls: Account, Snowflake, Tasks| MCP
+    GATEWAY ==>|7. Sync Messages to Thread| DM_CHAN
+    DM_CHAN -.->|8. CSM Slack Replies| GATEWAY
+                    </div>
+                </div>
+
+                <h3 class="sub-title">⚡ The Frictionless Handshake Sequence</h3>
+                <p>The diagram below highlights the zero-friction handshake. The CSM never touches technical channel IDs or copy-pastes 6-digit codes:</p>
+
+                <div class="diagram-box">
+                    <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor CSM as CSM in Salesforce
+    participant LWC as slackBotAgent LWC
+    participant Apex as SlackUserIdentityService
+    participant GCP as GCP Slackbot (Cloud Run)
+    participant Slack as Slack Workspace API
+    participant SFDB as Salesforce DB (User)
+
+    Note over CSM,LWC: Phase 1: Initiation
+    CSM->>LWC: Opens Account Record Page
+    LWC->>Apex: getOrResolveUserIdentity()
+    Apex->>SFDB: Query Slack_DM_Channel_Id__c
+    SFDB-->>Apex: null (Unauthenticated state)
+    Apex-->>LWC: isConnected = false
+    LWC-->>CSM: Display "Sign in with Slack" Banner & Composer Lock
+
+    Note over CSM,GCP: Phase 2: The OAuth Redirect Handshake
+    CSM->>LWC: Clicks "Sign in with Slack" (Auto-picks UserInfo.getUserEmail())
+    LWC->>GCP: Opens window: /auth/login?sfUserId=...&email=...
+    GCP-->>CSM: HTTP 302 Redirect to slack.com/oauth/v2/authorize
+    CSM->>Slack: Clicks "Accept / Allow" on Slack consent screen
+    Slack-->>GCP: HTTP 302 Redirect to /auth/slack/callback?code=...
+    GCP->>Slack: oauth.v2.access(code) & conversations.open()
+    Slack-->>GCP: Returns Slack User ID & DM Channel (D0BUNTVJCQJ)
+    GCP->>SFDB: Update User record (Slack_DM_Channel_Id__c)
+    GCP-->>CSM: postMessage & window.close() (Popup closes automatically!)
+    
+    Note over GCP,SFDB: Phase 3: Zero-Reconnect Persistence
+    LWC->>LWC: Receives postMessage & refreshes identity context
+    
+    Note over LWC,CSM: Phase 4: Ready for Instant Chat
+    LWC-->>CSM: Status turns Green 🟢, Composer Unlocks!
+    LWC->>CSM: Private chat threads load instantly
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- TAB 2: SALESFORCE CONFIGURATIONS                                  -->
+        <!-- ================================================================= -->
+        <div id="tab-salesforce-config" class="tab-content" style="display: none;">
+            <div class="section-card">
+                <h2 class="section-title">⚙️ Exact Salesforce Configurations Required</h2>
+                <p>
+                    Here is the definitive checklist of every setting, metadata item, and security permission required on Salesforce to connect with the GCP Slackbot and Salesforce MCP.
+                </p>
+
+                <div class="step-grid">
+                    <!-- Config 1: Remote Site Settings -->
+                    <div class="step-card">
+                        <div class="step-number">Configuration 1</div>
+                        <h4>Remote Site Settings & CSP</h4>
+                        <p>Allow outbound HTTP callouts from Apex to GCP and Slack:</p>
+                        <ul>
+                            <li><strong>GCP Slackbot Endpoint</strong>:
+                                <br/><span class="inline-code">https://slack-gemini-agent-xyz.a.run.app</span>
+                            </li>
+                            <li><strong>Slack API Endpoint</strong>:
+                                <br/><span class="inline-code">https://slack.com</span>
+                            </li>
+                        </ul>
+                        <div class="callout success">
+                            <strong>Setup Path:</strong> Setup &rarr; Security &rarr; Remote Site Settings &rarr; New Remote Site.
+                        </div>
+                    </div>
+
+                    <!-- Config 2: Connected App -->
+                    <div class="step-card gcp-themed">
+                        <div class="step-number">Configuration 2</div>
+                        <h4>OAuth 2.0 Connected App</h4>
+                        <p>Allows the GCP Slackbot to authenticate into Salesforce and invoke the Salesforce Custom MCP server:</p>
+                        <ul>
+                            <li><strong>Connected App Name</strong>: <span class="inline-code">Slackbot_GCP_Gateway</span></li>
+                            <li><strong>OAuth Scopes</strong>:
+                                <br/>• <span class="inline-code">api</span> (Access and manage data via REST)
+                                <br/>• <span class="inline-code">refresh_token, offline_access</span> (Long-lived session)
+                            </li>
+                            <li><strong>Permitted Users</strong>: Admin approved users are pre-authorized.</li>
+                        </ul>
+                        <div class="callout">
+                            Generates the <span class="inline-code">SF_CLIENT_ID</span> and <span class="inline-code">SF_CLIENT_SECRET</span> needed by GCP.
+                        </div>
+                    </div>
+
+                    <!-- Config 3: Custom Fields on User -->
+                    <div class="step-card slack-themed">
+                        <div class="step-number">Configuration 3</div>
+                        <h4>Custom Fields on User Object</h4>
+                        <p>Permanently caches identity to ensure &lt;5ms zero-reconnect daily logins:</p>
+                        <ul>
+                            <li><span class="inline-code">Slack_User_Id__c</span> (Text 30)</li>
+                            <li><span class="inline-code">Slack_DM_Channel_Id__c</span> (Text 30)</li>
+                            <li><span class="inline-code">Slack_Connected_Email__c</span> (Email)</li>
+                            <li><span class="inline-code">Slack_Pairing_Code__c</span> (Text 20, Optional)</li>
+                        </ul>
+                        <div class="callout success">
+                            Grant Field-Level Security (FLS) Read/Edit to all CSM profiles.
+                        </div>
+                    </div>
+
+                    <!-- Config 4: Salesforce Custom MCP Server -->
+                    <div class="step-card">
+                        <div class="step-number">Configuration 4</div>
+                        <h4>Salesforce MCP Server Setup</h4>
+                        <p>The hosted MCP server in Salesforce (<span class="inline-code">LearnDCAgentMCPServer</span>) exposes tools to external clients:</p>
+                        <ul>
+                            <li><strong>Endpoint URL</strong>:
+                                <br/><span class="inline-code">/platform/mcp/v1/custom/LearnDCAgentMCPServer</span>
+                            </li>
+                            <li><strong>Exposed Tools</strong>:
+                                <br/>• <span class="inline-code">search_accounts</span>
+                                <br/>• <span class="inline-code">query_snowflake</span>
+                                <br/>• <span class="inline-code">create_account_task</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Config 5: Lightning Page Layout -->
+                    <div class="step-card success-themed">
+                        <div class="step-number">Configuration 5</div>
+                        <h4>Lightning App Page Placement</h4>
+                        <p>Deploying the chat interface for the CSM:</p>
+                        <ul>
+                            <li>Open <strong>Account Record Page</strong> in Lightning App Builder.</li>
+                            <li>Drag the <span class="inline-code">slackBotAgent</span> LWC into the right-hand utility sidebar or tab.</li>
+                            <li>Pass <span class="inline-code">recordId</span> context so the bot knows the active customer account.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Config 6: Visualforce OAuth Callback -->
+                    <div class="step-card">
+                        <div class="step-number">Configuration 6</div>
+                        <h4>Visualforce Popup Bridge (Optional)</h4>
+                        <p>Included in the package for enterprise popup OAuth fallback:</p>
+                        <ul>
+                            <li><span class="inline-code">SlackOAuthCallback.page</span></li>
+                            <li><span class="inline-code">SlackOAuthCallbackController.cls</span></li>
+                            <li>Enables 1-click popup authorization closing via <span class="inline-code">window.opener.postMessage</span>.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- TAB 3: GCP & SLACK SETUP                                          -->
+        <!-- ================================================================= -->
+        <div id="tab-gcp-slack-config" class="tab-content" style="display: none;">
+            <div class="section-card">
+                <h2 class="section-title">☁️ GCP Cloud Run & Slack Workspace Configuration</h2>
+                <p>
+                    The GCP Cloud Run container executes the AI agent. It acts as a bridge between the Slack API and the Salesforce MCP server.
+                </p>
+
+                <h3 class="sub-title">1. GCP Cloud Run Environment Variables (.env)</h3>
+                <p>Deploy your container to GCP Cloud Run with the following environment variables:</p>
+                <pre><code># ------------------------------------------------------------------------------
+# Google Cloud Platform & Gemini AI
+# ------------------------------------------------------------------------------
+PORT=8080
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+GEMINI_MODEL=gemini-3.6-flash
+
+# ------------------------------------------------------------------------------
+# Slack App Configuration (Workspace T0BU7EDE40P)
+# ------------------------------------------------------------------------------
+SLACK_BOT_TOKEN=YOUR_SLACK_BOT_TOKEN
+SLACK_APP_TOKEN=YOUR_SLACK_APP_TOKEN
+SLACK_SIGNING_SECRET=YOUR_SLACK_SIGNING_SECRET
+
+# ------------------------------------------------------------------------------
+# Salesforce MCP & Connected App Integration
+# ------------------------------------------------------------------------------
+ENABLE_SALESFORCE_TOOLS=true
+SF_LOGIN_URL=https://login.salesforce.com
+SF_INSTANCE_URL=https://orgfarm-60a150fdc3-dev-ed.develop.my.salesforce.com
+SF_CLIENT_ID=PlatformCLI
+SF_REFRESH_TOKEN=YOUR_SALESFORCE_REFRESH_TOKEN
+SF_MCP_ENDPOINT_URL=https://api.salesforce.com/platform/mcp/v1/custom/LearnDCAgentMCPServer
+
+# ------------------------------------------------------------------------------
+# Snowflake Data Warehouse Telemetry (Optional)
+# ------------------------------------------------------------------------------
+SNOWFLAKE_ACCOUNT=hjyxziv-mi58790
+SNOWFLAKE_USERNAME=SUMITGUPTA05
+SNOWFLAKE_WAREHOUSE=COMPUTE_WH
+SNOWFLAKE_DATABASE=LEARNDC_DB
+SNOWFLAKE_SCHEMA=ANALYTICS</code></pre>
+
+                <h3 class="sub-title">2. Slack App Bot Permissions (OAuth & Permissions)</h3>
+                <p>Ensure the Slack App (<span class="inline-code">test_agent_app</span>) in workspace <strong>AI Studio Agent with Slack</strong> has the following Bot Token Scopes:</p>
+                <ul>
+                    <li><span class="inline-code">chat:write</span> — Allows sending AI responses and summaries.</li>
+                    <li><span class="inline-code">im:history</span> & <span class="inline-code">im:read</span> — Reads 1-on-1 private DM thread history.</li>
+                    <li><span class="inline-code">im:write</span> — Initiates 1-on-1 private DMs with CSMs.</li>
+                    <li><span class="inline-code">users:read</span> & <span class="inline-code">users:read.email</span> — Resolves CSM email to their unique Slack ID.</li>
+                    <li><span class="inline-code">reactions:write</span> & <span class="inline-code">reactions:read</span> — Handles thread pinning with pin reactions.</li>
+                </ul>
+
+                <h3 class="sub-title">3. 1-Command GCP Cloud Run Deployment</h3>
+                <p>Deploy the agent directly from the project directory using Google Cloud CLI:</p>
+                <pre><code>gcloud run deploy slack-gemini-agent \
+    --source . \
+    --region us-central1 \
+    --allow-unauthenticated \
+    --set-env-vars SF_CLIENT_ID=PlatformCLI,GEMINI_MODEL=gemini-3.6-flash</code></pre>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- TAB 4: CSM USER JOURNEY (STEP-BY-STEP)                            -->
+        <!-- ================================================================= -->
+        <div id="tab-csm-journey" class="tab-content" style="display: none;">
+            <div class="section-card">
+                <h2 class="section-title">🚀 CSM End-to-End User Experience Walkthrough</h2>
+                <p>
+                    Here is the exact step-by-step experience for a Customer Success Manager (e.g., <strong>Summo CSM</strong>), highlighting how frictionless the connection and daily usage are.
+                </p>
+
+                <div class="step-grid">
+                    <div class="step-card">
+                        <div class="step-number">Step 1 — First Login</div>
+                        <h4>Initial Open (Unconnected State)</h4>
+                        <p>The CSM opens Salesforce and navigates to customer <em>Edge Communications</em>.</p>
+                        <ul>
+                            <li>The LWC loads in &lt;100ms.</li>
+                            <li>Badge shows: <span class="inline-code">Slack: Sign in with Slack 🟡</span></li>
+                            <li>Input placeholder: <em>"🔒 Sign in with Slack to start chatting..."</em></li>
+                            <li>Thread history is <strong>100% empty</strong> (Zero history leak from other CSMs).</li>
+                        </ul>
+                    </div>
+
+                    <div class="step-card success-themed">
+                        <div class="step-number">Step 2 — Handshake</div>
+                        <h4>1-Click OAuth Redirect Handshake</h4>
+                        <p>The CSM clicks <strong>"Sign in with Slack"</strong> directly in Salesforce:</p>
+                        <ul>
+                            <li>Salesforce automatically retrieves the CSM's email (<span class="inline-code">UserInfo.getUserEmail()</span>) — <strong>zero manual typing required</strong>.</li>
+                            <li>Redirects / opens popup to GCP (<span class="inline-code">/auth/login</span>) &rarr; redirects to official Slack consent screen.</li>
+                            <li>CSM clicks <strong>"Accept / Allow"</strong> on Slack.</li>
+                            <li>Slack redirects to GCP callback (<span class="inline-code">/auth/slack/callback</span>) which provisions private DM <span class="inline-code">D0BUNTVJCQJ</span> and updates Salesforce.</li>
+                            <li>Window closes automatically, status turns <span class="inline-code">Connected 🟢</span>, and composer unlocks!</li>
+                        </ul>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">Step 3 — Interactive Chat</div>
+                        <h4>AI Chat with Live MCP Tools</h4>
+                        <p>The CSM types prompts or clicks quick action chips:</p>
+                        <ul>
+                            <li>CSM clicks <span class="inline-code">⚡ /account-brief</span>: Gemini queries the Salesforce MCP server, synthesizes CRM vitals, and returns an executive briefing card.</li>
+                            <li>CSM clicks <span class="inline-code">❄️ /snowflake</span>: Queries Snowflake data warehouse for live Health Score (85/100) and churn telemetry.</li>
+                            <li>CSM instructs: <em>"Schedule a follow-up task for next Tuesday"</em>: Agent asks for confirmation before logging the Task!</li>
+                        </ul>
+                    </div>
+
+                    <div class="step-card slack-themed">
+                        <div class="step-number">Step 4 — Slack Mobile Continuity</div>
+                        <h4>True Bi-Directional Sync</h4>
+                        <p>The conversation is mirrored in Slack:</p>
+                        <ul>
+                            <li>The CSM leaves their laptop and opens <strong>Slack on their phone</strong>.</li>
+                            <li>Inside the 1-on-1 DM with the bot, the exact conversation thread is visible.</li>
+                            <li>The CSM replies directly in Slack: <em>"Also notify the primary contact"</em>.</li>
+                            <li>Returning to Salesforce, the LWC thread shows their Slack reply synchronized!</li>
+                        </ul>
+                    </div>
+
+                    <div class="step-card success-themed">
+                        <div class="step-number">Step 5 — Day 2+</div>
+                        <h4>Zero-Reconnect Experience</h4>
+                        <p>Next morning, the CSM logs into Salesforce:</p>
+                        <ul>
+                            <li>No login prompts. No pairing dialogs.</li>
+                            <li>Salesforce retrieves <span class="inline-code">User.Slack_DM_Channel_Id__c</span> in &lt;5ms.</li>
+                            <li>Badge shows <span class="inline-code">Slack: Connected 🟢</span> immediately.</li>
+                            <li>CSM resumes chatting immediately.</li>
+                        </ul>
+                    </div>
+
+                    <div class="step-card">
+                        <div class="step-number">Step 6 — Direct Thread Deep-Link</div>
+                        <h4>1-Click Slack Thread Navigation</h4>
+                        <p>Every conversation bubble contains a direct permalink:</p>
+                        <ul>
+                            <li>CSM clicks <span class="inline-code">Slack ↗</span> or <span class="inline-code">💬 View in Slack History</span>.</li>
+                            <li>Browser deep-links to: <br/><span class="inline-code">https://slack.com/archives/D0BUNTVJCQJ/p178851...</span></li>
+                            <li>Expands the thread sidebar in both Slack Web and Slack Desktop.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- TAB 5: SECURITY & ISOLATION                                       -->
+        <!-- ================================================================= -->
+        <div id="tab-security-governance" class="tab-content" style="display: none;">
+            <div class="section-card">
+                <h2 class="section-title">🔒 Enterprise Security, Data Isolation & Governance</h2>
+                <p>
+                    Why this architecture meets stringent enterprise privacy and compliance requirements.
+                </p>
+
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Security Area</th>
+                            <th>Traditional Risk</th>
+                            <th>Our Architecture Safeguard</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Cross-User History Leak</strong></td>
+                            <td>CSM B opens Account page and sees CSM A's confidential Slack chats.</td>
+                            <td><strong>100% Strict User Scoping</strong>: Left sidebar queries enforce <span class="inline-code">CreatedById = :currentUserId</span>. If unauthenticated, returns empty list <span class="inline-code">[]</span>.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Private DM Segregation</strong></td>
+                            <td>All chats posted to a shared bot channel where entire company sees them.</td>
+                            <td><strong>Isolated 1-on-1 DMs</strong>: Every CSM has their own private DM (<span class="inline-code">D0BUQS5V68Z</span> vs <span class="inline-code">D0BUNTVJCQJ</span>).</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Employee Offboarding</strong></td>
+                            <td>Employee leaves company, but Slack credentials remain active.</td>
+                            <td><strong>Single-Point Revocation</strong>: Deactivating the Salesforce User instantly blocks LWC access and invalidates Connected App sessions.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Account Reassignment</strong></td>
+                            <td>Account transferred to new CSM; historical threads expose predecessor's private notes.</td>
+                            <td><strong>User-Bound Scoping</strong>: New CSM receives clean workspace thread; Gemini AI generates an instant <span class="inline-code">/account-brief</span> handoff summary.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>High Availability</strong></td>
+                            <td>GCP service outage stops all Salesforce account co-piloting.</td>
+                            <td><strong>Graceful Dual Fallback</strong>: If GCP endpoint is offline, Apex automatically falls back to native Apex + Gemini MCP server execution.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <p>Google Antigravity &bull; LearnDC Enterprise Architecture &bull; Generated for Salesforce, GCP & Slack Integration</p>
+        </div>
+
+    </div>
+
+    <!-- TAB SWITCHING SCRIPT -->
+    <script>
+        function showTab(tabName, clickedTab) {
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(el => el.style.display = 'none');
+
+            const tabs = document.querySelectorAll('.nav-tab');
+            tabs.forEach(el => el.classList.remove('active'));
+
+            const selectedContent = document.getElementById('tab-' + tabName);
+            if (selectedContent) {
+                selectedContent.style.display = 'block';
+            }
+
+            if (clickedTab) {
+                clickedTab.classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>

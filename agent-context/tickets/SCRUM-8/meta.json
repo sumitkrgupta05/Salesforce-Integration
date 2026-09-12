@@ -1,0 +1,12 @@
+{
+  "summary": "Create fields in contact object.",
+  "description": "| # | Field Name | API Name | Data Type | Example |\n| --- | --- | --- | --- | --- |\n| 6 | Allergies | `Allergies__c` | Long Text Area | Penicillin, peanuts |\n| 7 | Primary Physician | `Primary_Physician__c` | Text | Dr. Rajesh Sharma |\n\nNow create the above fields into the contact object and then add them into the ‘Medical Infromation’ section.",
+  "status": "In Review",
+  "threadTs": "1789210840.975949",
+  "channelId": "C0C18F88PDX",
+  "targetOrg": "learn_dc",
+  "ticketKey": "SCRUM-8",
+  "updatedAt": "2026-09-12T11:07:34.239Z",
+  "prUrl": "https://github.com/sumitkrgupta05/Salesforce-Integration/pull/1",
+  "prTitle": "feat(SCRUM-8): Create fields in contact object."
+}

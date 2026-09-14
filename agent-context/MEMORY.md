@@ -42,6 +42,8 @@
   - `Emergency_Contact_Phone__c` (Phone): Primary emergency contact phone number. Added in SCRUM-6.
   - `Allergies__c` (Long Text Area: 32768, 3 visible lines): Captures known allergies for the contact. Added in SCRUM-8.
   - `Primary_Physician__c` (Text 255): Name of the primary physician for the contact. Added in SCRUM-8.
+  - `Chronic_Conditions__c` (Long Text Area: 32768, 3 visible lines): Captures known chronic conditions for the contact. Added in SCRUM-9.
+  - `Current_Medications__c` (Long Text Area: 32768, 3 visible lines): Captures current medications taken by the contact. Added in SCRUM-9.
 
 ---
 
@@ -50,7 +52,7 @@
   *(None yet — planned for subsequent portal UI tickets)*
 * **FlexiPages / Record Pages:**
   * Standard Account Record Page layout (`Account-Account Layout`) updated to expose `Renewal_Risk_Score__c`, `Last_Health_Check__c`, and `Industry_Segment__c` under the `Renewal & Health Assessment` section. Added in PORTAL-102.
-  * Standard Contact Record Page layout (`Contact-Contact Layout`) updated to expose `Blood_Group__c`, `Date_of_Birth__c`, `Height_cm__c`, `Weight_kg__c`, `Emergency_Contact_Phone__c`, `Allergies__c`, and `Primary_Physician__c` under the `Medical Information` 2-column section. Added in SCRUM-7, updated in SCRUM-8.
+  * Standard Contact Record Page layout (`Contact-Contact Layout`) updated to expose `Blood_Group__c`, `Date_of_Birth__c`, `Height_cm__c`, `Weight_kg__c`, `Emergency_Contact_Phone__c`, `Allergies__c`, `Primary_Physician__c`, `Chronic_Conditions__c`, and `Current_Medications__c` under the `Medical Information` 2-column section. Added in SCRUM-7, updated in SCRUM-8 and SCRUM-9.
 
 ---
 
@@ -61,3 +63,4 @@
 * `SCRUM-6`: Create fields on Contact object. (Completed)
 * `SCRUM-7`: Add 'Medical Information' section to Contact page layout. (Completed)
 * `SCRUM-8`: Create fields in contact object (Allergies__c, Primary_Physician__c) and add to Medical Information section. (Completed)
+* `SCRUM-9`: Create fields on Contact object (Chronic_Conditions__c, Current_Medications__c) and add to Medical Information section. (Completed)

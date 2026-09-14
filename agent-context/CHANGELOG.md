@@ -13,4 +13,5 @@
 | 2026-09-12 | SCRUM-6 | Feature | Create fields on Contact object | `force-app/main/default/objects/Contact/*`, `/agent-context/*` | Pending PR |
 | 2026-09-12 | SCRUM-7 | Feature | Add Medical Information 2-column section to Contact Layout | `force-app/main/default/layouts/Contact-Contact Layout.layout-meta.xml`, `/agent-context/*` | Pending PR |
 | 2026-09-12 | SCRUM-8 | Feature | Create Allergies and Primary Physician fields on Contact and add to Medical Information section | `force-app/main/default/objects/Contact/fields/*`, `force-app/main/default/layouts/Contact-Contact Layout.layout-meta.xml`, `/agent-context/*` | Pending PR |
+| 2026-09-14 | SCRUM-9 | Feature | Create Chronic Conditions and Current Medications fields on Contact and add to Medical Information section | `force-app/main/default/objects/Contact/fields/*`, `force-app/main/default/layouts/Contact-Contact Layout.layout-meta.xml`, `/agent-context/*` | Pending PR |
 

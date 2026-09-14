@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Chronic_Conditions__c</fullName>
+    <description>Captures known chronic conditions for the contact (e.g., Diabetes, Asthma).</description>
+    <inlineHelpText>Enter any chronic conditions for this contact.</inlineHelpText>
+    <label>Chronic Conditions</label>
+    <length>32768</length>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

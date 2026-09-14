@@ -6,9 +6,10 @@
   "channelId": "C0C18F88PDX",
   "targetOrg": "learn_dc",
   "ticketKey": "SCRUM-10",
-  "updatedAt": "2026-09-14T10:33:28.528Z",
+  "updatedAt": "2026-09-14T10:50:33.152Z",
   "prUrl": "https://github.com/sumitkrgupta05/Salesforce-Integration/pull/4",
-  "prTitle": "feat(SCRUM-10): Test Contact Layout not showing a section",
-  "lastQaFeedback": "Okay but have you test that the, Medical Information section in Contact layout in page layout in contact object is showing or not? Once clear this bt checking permission set and all other things then let me know.",
-  "lastQaFeedbackAt": "2026-09-14T10:33:28.527Z"
+  "prTitle": "fix(SCRUM-10): Remediation for Test Contact Layout not showing a section",
+  "lastQaFeedback": "okay while testing i see that contact page layout is containing the medical section with the fields but when viewing any of the contact record or creating new contact, then that section is not visible. so try to look into this and then fix this out.",
+  "lastQaFeedbackAt": "2026-09-14T10:50:33.151Z",
+  "lastRemediatedAt": "2026-09-14T10:44:04.495Z"
 }

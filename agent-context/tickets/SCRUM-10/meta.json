@@ -6,5 +6,9 @@
   "channelId": "C0C18F88PDX",
   "targetOrg": "learn_dc",
   "ticketKey": "SCRUM-10",
-  "updatedAt": "2026-09-14T10:19:46.270Z"
+  "updatedAt": "2026-09-14T10:33:28.528Z",
+  "prUrl": "https://github.com/sumitkrgupta05/Salesforce-Integration/pull/4",
+  "prTitle": "feat(SCRUM-10): Test Contact Layout not showing a section",
+  "lastQaFeedback": "Okay but have you test that the, Medical Information section in Contact layout in page layout in contact object is showing or not? Once clear this bt checking permission set and all other things then let me know.",
+  "lastQaFeedbackAt": "2026-09-14T10:33:28.527Z"
 }

@@ -1,0 +1,10 @@
+{
+  "summary": "Test Contact Layout not showing a section",
+  "description": "Test that why in Contact Layout the ‘medical information’ section is not showing. so try to fix this issue. also when any user check then in contact record page this section would be present over there.",
+  "status": "In Progress",
+  "threadTs": "1789381186.265999",
+  "channelId": "C0C18F88PDX",
+  "targetOrg": "learn_dc",
+  "ticketKey": "SCRUM-10",
+  "updatedAt": "2026-09-14T10:19:46.270Z"
+}

@@ -1,0 +1,10 @@
+{
+  "summary": "Create fields on Contact object",
+  "description": "| # | Field Name | API Name | Data Type | Example |\n| --- | --- | --- | --- | --- |\n| 8 | Chronic Conditions | `Chronic_Conditions__c` | Long Text Area | Diabetes, Asthma |\n| 9 | Current Medications | `Current_Medications__c` | Long Text Area | Metformin 500mg, Albuterol |\n\nNow create these fields on Contact object and add them in medical information section in Contact layout.",
+  "status": "In Progress",
+  "threadTs": "1789369642.119379",
+  "channelId": "C0C18F88PDX",
+  "targetOrg": "learn_dc",
+  "ticketKey": "SCRUM-9",
+  "updatedAt": "2026-09-14T07:07:22.245Z"
+}

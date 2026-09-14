@@ -137,6 +137,10 @@
                 <behavior>Edit</behavior>
                 <field>Allergies__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>Chronic_Conditions__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
@@ -150,6 +154,10 @@
             <layoutItems>
                 <behavior>Edit</behavior>
                 <field>Primary_Physician__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>Current_Medications__c</field>
             </layoutItems>
         </layoutColumns>
         <style>TwoColumnsLeftToRight</style>

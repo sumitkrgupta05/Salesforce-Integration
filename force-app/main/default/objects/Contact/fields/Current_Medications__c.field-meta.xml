@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Current_Medications__c</fullName>
+    <description>Captures current medications taken by the contact (e.g., Metformin 500mg, Albuterol).</description>
+    <inlineHelpText>Enter current medications for this contact.</inlineHelpText>
+    <label>Current Medications</label>
+    <length>32768</length>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>LongTextArea</type>
+    <visibleLines>3</visibleLines>
+</CustomField>

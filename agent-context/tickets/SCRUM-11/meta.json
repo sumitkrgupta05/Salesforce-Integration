@@ -1,0 +1,10 @@
+{
+  "summary": "Create Emergency Contact Phone field on Contact object",
+  "description": "| # | Field Name | API Name | Data Type | Example |\n| --- | --- | --- | --- | --- |\n| 10 | Emergency Contact Phone | Emergency_Contact_Phone__c | Phone | +1-555-0199 |\n\nCreate the custom phone field Emergency_Contact_Phone__c on Contact object and add it into the Medical Information section in Contact layout.",
+  "status": "In Progress",
+  "threadTs": "1789387491.958429",
+  "channelId": "C0C18F88PDX",
+  "targetOrg": "learn_dc",
+  "ticketKey": "SCRUM-11",
+  "updatedAt": "2026-09-14T12:04:52.011Z"
+}

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Last_Health_Checkup_Date__c</fullName>
+    <description>Timestamp of the most recent health checkup for the contact.</description>
+    <inlineHelpText>Enter the date of the contact&apos;s last health checkup (e.g., 10-Sep-2026).</inlineHelpText>
+    <label>Last Health Checkup Date</label>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Date</type>
+</CustomField>

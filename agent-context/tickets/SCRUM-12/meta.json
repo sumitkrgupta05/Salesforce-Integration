@@ -1,0 +1,17 @@
+{
+  "summary": "Create 2 fields on Contact",
+  "description": "| # | Field Name | API Name | Data Type | Example |\n| --- | --- | --- | --- | --- |\n| 1 | Last Health Checkup Date | `Last_Health_Checkup_Date__c` | Date | 10-Sep-2026 |\n| 2 | Health Insurance Provider | `Health_Insurance_Provider__c` | Text | Star Health Insurance |\n\ncreate the above 2 fields on contact object and add this 2 fields into the ‘Medical Informtion’ section.",
+  "status": "In Progress",
+  "threadTs": "1789454048.613049",
+  "channelId": "C0C18F88PDX",
+  "targetOrg": "learn_dc",
+  "ticketKey": "SCRUM-12",
+  "updatedAt": "2026-09-15T06:44:06.839Z",
+  "prUrl": "https://github.com/sumitkrgupta05/Salesforce-Integration/pull/6",
+  "prTitle": "feat(SCRUM-12): Create 2 fields on Contact",
+  "prReviewStatus": "APPROVED",
+  "prReviewAttempts": 1,
+  "prNumber": 6,
+  "lastQaFeedback": "okay but here have you tested that these fields metadata have been deployed into the 'Medical Information' section in Contact Layout or not.",
+  "lastQaFeedbackAt": "2026-09-15T06:44:06.838Z"
+}

@@ -98,6 +98,7 @@ sf project deploy start --source-dir force-app/main/default/objects/Contact/fiel
 
 ## 4. Tooling API Verification
 
+### CustomField Verification:
 **Command:**
 ```bash
 sf data query -q "SELECT Id, DeveloperName, TableEnumOrId FROM CustomField WHERE TableEnumOrId = 'Contact' AND DeveloperName IN ('Last_Health_Checkup_Date', 'Health_Insurance_Provider')" -t -o learn_dc
@@ -116,18 +117,75 @@ Total number of records retrieved: 2.
 
 ---
 
-## 5. Persistent Memory Updates
+## 5. QA Remediation: Contact Layout Metadata Verification
 
-- **`agent-context/MEMORY.md`:**
-  - Added `Last_Health_Checkup_Date__c` and `Health_Insurance_Provider__c` under `## Contact Object` (`* **Custom Fields:**`).
-  - Updated `## Portal UI Components` under `* **FlexiPages / Record Pages:**` reflecting inclusion of `Last_Health_Checkup_Date__c` and `Health_Insurance_Provider__c` in `Contact-Contact Layout`.
-  - Updated `## Pending / Backlog Roadmap` marking `SCRUM-12` completed.
-- **`agent-context/CHANGELOG.md`:**
-  - Appended chronological ledger entry for `SCRUM-12`.
+### QA Issue Addressed:
+> "okay but here have you tested that these fields metadata have been deployed into the 'Medical Information' section in Contact Layout or not."
+
+### Deployment & Verification Execution:
+- **Redeployment Command:**
+  ```bash
+  sf project deploy start --source-dir force-app/main/default/objects/Contact/fields/Last_Health_Checkup_Date__c.field-meta.xml --source-dir force-app/main/default/objects/Contact/fields/Health_Insurance_Provider__c.field-meta.xml --source-dir "force-app/main/default/layouts/Contact-Contact Layout.layout-meta.xml" -o learn_dc
+  ```
+- **Deployment Status:** `Succeeded`
+- **Deploy ID:** `0Affj00000RHRPFCA5`
+- **Elapsed Time:** 3.15s
+- **Deployed Components:** 3/3 (100%)
+
+### Automated Layout Tooling API Query & Verification Test:
+**Command:**
+```bash
+sf data query -q "SELECT Metadata FROM Layout WHERE EntityDefinition.DeveloperName = 'Contact' AND Name = 'Contact Layout'" -t -o learn_dc --json
+```
+
+**Test Execution Output:**
+```
+Querying Contact Layout metadata from learn_dc...
+Total layout sections found: 7
+
+--- Section Details ---
+Label: Medical Information
+Style: TwoColumnsLeftToRight
+Custom Label: true
+Detail Heading: true
+Edit Heading: true
+
+Left Column Fields (6):
+  1. Blood_Group__c
+  2. Date_of_Birth__c
+  3. Emergency_Contact_Phone__c
+  4. Allergies__c
+  5. Chronic_Conditions__c
+  6. Last_Health_Checkup_Date__c
+
+Right Column Fields (5):
+  1. Height_cm__c
+  2. Weight_kg__c
+  3. Primary_Physician__c
+  4. Current_Medications__c
+  5. Health_Insurance_Provider__c
+
+--- Verification Checks ---
+Last_Health_Checkup_Date__c in Left Column: true
+Health_Insurance_Provider__c in Right Column: true
+
+>>> SUCCESS: Last_Health_Checkup_Date__c and Health_Insurance_Provider__c verified in Medical Information section in learn_dc. <<<
+```
 
 ---
 
-## 6. Guardrail Adherence
+## 6. Persistent Memory Updates
+
+- **`agent-context/MEMORY.md`:**
+  - Verified `Last_Health_Checkup_Date__c` and `Health_Insurance_Provider__c` under `## Contact Object` (`* **Custom Fields:**`).
+  - Verified `## Portal UI Components` under `* **FlexiPages / Record Pages:**` reflecting inclusion of `Last_Health_Checkup_Date__c` and `Health_Insurance_Provider__c` in `Contact-Contact Layout`.
+  - Verified `## Pending / Backlog Roadmap` marking `SCRUM-12` completed.
+- **`agent-context/CHANGELOG.md`:**
+  - Preserved chronological ledger entry for `SCRUM-12`.
+
+---
+
+## 7. Guardrail Adherence
 
 - **STRICT PROHIBITION (ServiceTitans):** Strictly complied. The `ServiceTitans` directory was never accessed, inspected, or modified.
 - **Target Org (`learn_dc`):** All validation, deployment, and Tooling API query commands explicitly targeted `-o learn_dc`.

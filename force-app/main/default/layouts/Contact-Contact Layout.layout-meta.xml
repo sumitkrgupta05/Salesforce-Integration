@@ -141,6 +141,10 @@
                 <behavior>Edit</behavior>
                 <field>Chronic_Conditions__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>Last_Health_Checkup_Date__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>
@@ -158,6 +162,10 @@
             <layoutItems>
                 <behavior>Edit</behavior>
                 <field>Current_Medications__c</field>
+            </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>Health_Insurance_Provider__c</field>
             </layoutItems>
         </layoutColumns>
         <style>TwoColumnsLeftToRight</style>

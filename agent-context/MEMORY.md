@@ -51,7 +51,7 @@
 
 ## Portal UI Components
 * **Lightning Web Components:**
-  *(None yet — planned for subsequent portal UI tickets)*
+  * `contactHealthSummary`: Read-only 2-column health summary card component exposed for Contact Record Page (`lightning__RecordPage`). Surfaces 9 health fields (`Blood_Group__c`, `Date_of_Birth__c`, `Height_cm__c`, `Weight_kg__c`, `Allergies__c`, `Chronic_Conditions__c`, `Current_Medications__c`, `Last_Health_Checkup_Date__c`, `Health_Insurance_Provider__c`) using `lightning/uiRecordApi` LDS wire service with automatic `"Not Available"` fallback for blank values. Built in SCRUM-13.
 * **FlexiPages / Record Pages:**
   * Standard Account Record Page layout (`Account-Account Layout`) updated to expose `Renewal_Risk_Score__c`, `Last_Health_Check__c`, and `Industry_Segment__c` under the `Renewal & Health Assessment` section. Added in PORTAL-102.
   * Standard Contact Record Page layout (`Contact-Contact Layout`) updated to expose `Blood_Group__c`, `Date_of_Birth__c`, `Height_cm__c`, `Weight_kg__c`, `Emergency_Contact_Phone__c`, `Allergies__c`, `Primary_Physician__c`, `Chronic_Conditions__c`, `Current_Medications__c`, `Last_Health_Checkup_Date__c`, and `Health_Insurance_Provider__c` under the `Medical Information` 2-column section. Added in SCRUM-7, updated in SCRUM-8, SCRUM-9, SCRUM-11, and SCRUM-12.
@@ -68,3 +68,4 @@
 * `SCRUM-9`: Create fields on Contact object (Chronic_Conditions__c, Current_Medications__c) and add to Medical Information section. (Completed)
 * `SCRUM-11`: Create Emergency Contact Phone field on Contact object (Emergency_Contact_Phone__c) and add to Medical Information section. (Completed)
 * `SCRUM-12`: Create 2 fields on Contact (Last_Health_Checkup_Date__c, Health_Insurance_Provider__c) and add to Medical Information section. (Completed)
+* `SCRUM-13`: Create Contact Health Summary LWC (contactHealthSummary) on Contact Record Page. (Completed)

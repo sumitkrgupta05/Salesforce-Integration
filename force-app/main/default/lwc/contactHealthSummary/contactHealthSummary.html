@@ -1,0 +1,32 @@
+<template>
+    <lightning-card title="Health Summary" icon-name="standard:health_and_safety">
+        <template lwc:if={isLoading}>
+            <div class="slds-p-around_large slds-is-relative spinner-container">
+                <lightning-spinner alternative-text="Loading Health Summary" size="medium"></lightning-spinner>
+            </div>
+        </template>
+        <template lwc:elseif={errorMessage}>
+            <div class="slds-p-around_medium">
+                <div class="slds-notify slds-notify_alert slds-alert_error" role="alert">
+                    <span class="slds-assistive-text">Error</span>
+                    <span class="slds-icon_container slds-icon-utility-error slds-m-right_x-small" title="Error">
+                        <lightning-icon icon-name="utility:error" size="x-small" variant="inverse"></lightning-icon>
+                    </span>
+                    <h2>{errorMessage}</h2>
+                </div>
+            </div>
+        </template>
+        <template lwc:else>
+            <div class="slds-p-around_medium">
+                <div class="slds-grid slds-wrap slds-gutters">
+                    <template for:each={healthFields} for:item="item">
+                        <div key={item.key} class="slds-col slds-size_1-of-1 slds-medium-size_6-of-12 slds-p-bottom_small">
+                            <div class="slds-text-title slds-text-color_weak slds-m-bottom_xx-small">{item.label}</div>
+                            <div class={item.valueClass} title={item.value}>{item.value}</div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </lightning-card>
+</template>

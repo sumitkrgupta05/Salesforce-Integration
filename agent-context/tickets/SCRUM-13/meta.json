@@ -1,10 +1,16 @@
 {
   "summary": "Contact Health Summary Component",
   "description": "**Issue Type:** Story**Priority:** Medium**Object:** Contact**Component:** Lightning Web Component (LWC)\n\n## Title\n\nCreate a Contact Health Summary LWC\n\n## User Story\n\nAs a Salesforce user, I want to view the key health information of a Contact in a dedicated LWC so that I can quickly understand the Contact's health details from the Contact record page.\n\n## Requirements\n\nCreate an LWC named `contactHealthSummary` and place it on the **Contact Record Page**.\n\nThe component should display the following fields:\n\n* Blood Group\n* Date of Birth\n* Height (cm)\n* Weight (kg)\n* Allergies\n* Chronic Conditions\n* Current Medications\n* Last Health Checkup Date\n* Health Insurance Provider\n\n### UI Requirements\n\n1. Display the information in a clean **2-column layout**.\n2. Add a card header:**Health Summary**\n3. Use appropriate Salesforce Lightning styling/SLDS.\n4. If a field is blank, display `Not Available` instead of leaving it empty.\n5. The component should automatically display information for the **current Contact record** using `recordId`.\n6. The component should be **read-only**; users should not edit the health information from this component.\n7. The component must be responsive and work properly on desktop and smaller screens.\n\n## Technical Requirements\n\n* Use **Lightning Web Components (LWC)**.\n* Use **Lightning Data Service / **`lightning/uiRecordApi` to retrieve Contact data.\n* Do not create an Apex class unless there is a specific technical requirement.\n* Use `@api recordId` to identify the current Contact.\n* Use SLDS classes wherever possible instead of unnecessary custom CSS.\n* Handle loading and error states gracefully.\n\n## Acceptance Criteria\n\n### AC1 — Component Visibility\n\nGiven a user is viewing a Contact record,when the Contact Health Summary component is added to the record page,then the component should display the Contact's health information.\n\n### AC2 — Field Display\n\nThe component should display all 9 required health fields.\n\n### AC3 — Empty Values\n\nIf any health field does not contain a value, the component should display **\"Not Available\"**.\n\n### AC4 — Read Only\n\nUsers should only be able to view the information and should not be able to edit it through the component.\n\n### AC5 — Record Context\n\nWhen the user navigates from one Contact record to another, the component should display the health information belonging to the currently opened Contact.\n\n### AC6 — Error Handling\n\nIf the Contact information cannot be loaded, display an appropriate error message instead of breaking the component.\n\n## Expected Outcome\n\nA reusable **Contact Health Summary LWC** that can be placed on any Contact Record Page and provides users with a quick, read-only view of important health information.\n\n## Developer Notes\n\nThe developer should provide:\n\n* `contactHealthSummary.html`\n* `contactHealthSummary.js`\n* `contactHealthSummary.js-meta.xml`\n* Any required CSS file\n\nThe component should be exposed for the **Lightning Record Page** and configured for the **Contact** object.",
-  "status": "In Progress",
+  "status": "In Review",
   "threadTs": "1789634853.345949",
   "channelId": "C0C18F88PDX",
   "targetOrg": "learn_dc",
   "ticketKey": "SCRUM-13",
-  "updatedAt": "2026-09-17T08:47:34.215Z"
+  "updatedAt": "2026-09-17T08:55:53.439Z",
+  "prUrl": "https://github.com/sumitkrgupta05/Salesforce-Integration/pull/7",
+  "prTitle": "feat(SCRUM-13): Contact Health Summary Component",
+  "prReviewStatus": "CHANGES_REQUESTED",
+  "prReviewEngine": "GitHub Action AI Agent",
+  "prReviewAttempts": 1,
+  "prNumber": 7
 }

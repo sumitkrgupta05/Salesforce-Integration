@@ -107,7 +107,7 @@
 ## 3. Deployment & Validation Strategy
 - **Target Org:** `learn_dc` (`sumit.gupta@datacloud.com`)
 - **SFDX Project Path:** `C:\Users\Sumit Kr Gupta\OneDrive - Teqfocus Solutions Pvt. Ltd\Desktop\Learn DC`
-- **Strict Guardrail Reminder:** NEVER touch, scan, or deploy from `C:\Users\Sumit Kr Gupta\OneDrive - Teqfocus Solutions Pvt. Ltd\Desktop\Learn DC\ServiceTitans`.
+- **Strict Guardrail Compliance:** Target org is strictly `learn_dc`. All work is confined to `force-app/main/default/lwc/contactHealthSummary/`. Zero references to foreign or unauthorized client orgs/directories.
 
 ### Step 1: Deploy Component Bundle to `learn_dc`
 ```bash
@@ -153,3 +153,48 @@ Append the following ledger line to the table:
 ```markdown
 | 2026-09-17 | SCRUM-13 | Feature | Create Contact Health Summary LWC (contactHealthSummary) with 2-column layout and blank value fallbacks | `force-app/main/default/lwc/contactHealthSummary/*`, `/agent-context/*` | Pending PR |
 ```
+
+---
+
+## 5. Remediation Plan (PR Review Fixes - Cycle 2)
+
+### PR Reviewer Finding:
+- **Audit Failure:** `[FAIL] Security Guardrail Violation: Detected reference to confidential client org`.
+- **Required Fix:** Immediately remove all references to foreign/client orgs. Target org must strictly remain `learn_dc`.
+
+### Root Cause Analysis:
+During Cycle 1, the implementation files and LWC code passed all functional tests, XML syntax validation, and Tooling API verification in `learn_dc`. However, PR documentation files (`agent-context/tickets/SCRUM-13/plan.md` and `agent-context/tickets/SCRUM-13/log.md`) inadvertently included explicit text strings referencing a confidential client directory in negative guardrail reminder statements. The automated PR Reviewer security scanner flagged these string literals as a security guardrail violation.
+
+### Detailed Actions Required by Agent 2 (Builder):
+
+1. **Sanitize `agent-context/tickets/SCRUM-13/log.md`:**
+   - Review and update Section 6 (`## 6. Guardrail Adherence`).
+   - Completely remove all string references to foreign or confidential client orgs and external directories.
+   - Replace with strict compliance confirmation stating:
+     - Target org is strictly and exclusively `learn_dc` (`sumit.gupta@datacloud.com`).
+     - All commands, validations, and deployments strictly ran against `-o learn_dc`.
+     - Zero interaction with, deployment to, or reference of any unauthorized orgs or directories.
+
+2. **Verify Cleanliness of `force-app/main/default/lwc/contactHealthSummary/`:**
+   - Perform a full scan across the LWC bundle files:
+     - `contactHealthSummary.html`
+     - `contactHealthSummary.js`
+     - `contactHealthSummary.js-meta.xml`
+     - `contactHealthSummary.css`
+   - Ensure zero occurrences of foreign org names, usernames, or paths.
+   - Ensure functional requirements (2-column layout, LDS wire service for all 9 health fields, `"Not Available"` fallback) remain intact.
+
+3. **Verify Cleanliness of Persistent Memory Files:**
+   - Confirm `agent-context/MEMORY.md` and `agent-context/CHANGELOG.md` have no references to foreign client orgs and strictly record `learn_dc`.
+
+4. **Dry-Run & Validation Confirmation:**
+   - Run a clean dry-run validation targeting `learn_dc`:
+     ```bash
+     sf project deploy start --source-dir force-app/main/default/lwc/contactHealthSummary -o learn_dc --dry-run
+     ```
+   - Confirm 0 errors.
+
+5. **Stage and Commit Cleaned Changes:**
+   - Stage sanitized files (`agent-context/tickets/SCRUM-13/plan.md`, `agent-context/tickets/SCRUM-13/log.md`, and LWC bundle).
+   - Push commit to PR #7 for re-review in Cycle 2.
+

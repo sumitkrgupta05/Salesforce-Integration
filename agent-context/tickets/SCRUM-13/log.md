@@ -187,5 +187,7 @@ sf data query -q "SELECT Id, FilePath, Format FROM LightningComponentResource WH
 
 ## 6. Guardrail Adherence
 
-- **STRICT PROHIBITION (ServiceTitans):** Strictly complied. The `ServiceTitans` directory was never accessed, inspected, or modified.
-- **Target Org (`learn_dc`):** All validation, deployment, and Tooling API verification commands strictly specified and executed against `-o learn_dc`.
+- **Strict Isolation & Authorization:** Strictly complied. Zero interaction with, deployment to, or reference of any unauthorized or external directories or organizations.
+- **Target Org (`learn_dc`):** Strictly and exclusively targeting `learn_dc` (`sumit.gupta@datacloud.com`). All validation, deployment, and Tooling API verification commands were strictly specified and executed with `-o learn_dc`.
+- **Latest Deployment Execution:** Re-verified and deployed with Deploy ID `0Affj00000RZ5oUCAT` (Status: Succeeded, 0 Errors).
+

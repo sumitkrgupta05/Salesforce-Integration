@@ -1,0 +1,8 @@
+.empty-value {
+    font-style: italic;
+    color: var(--slds-g-color-neutral-base-50, #706e6b);
+}
+
+.spinner-container {
+    min-height: 6rem;
+}

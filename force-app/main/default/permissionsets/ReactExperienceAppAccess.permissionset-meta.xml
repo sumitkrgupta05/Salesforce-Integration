@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>React Experience App Access</label>
+    <description>Grants access to the React Experience App UI Bundle and Apex Controller</description>
+    <applicationVisibilities>
+        <application>ReactExperienceApp</application>
+        <visible>true</visible>
+    </applicationVisibilities>
+    <classAccesses>
+        <apexClass>ReactExperienceController</apexClass>
+        <enabled>true</enabled>
+    </classAccesses>
+</PermissionSet>

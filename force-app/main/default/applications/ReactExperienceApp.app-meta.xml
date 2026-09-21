@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomApplication xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>React Experience App</label>
+    <description>Lightning application hosting the React Experience POC UI Bundle</description>
+    <uiType>Lightning</uiType>
+    <uiBundle>c__ReactExperiencePoc</uiBundle>
+    <formFactors>Large</formFactors>
+    <navType>Standard</navType>
+</CustomApplication>

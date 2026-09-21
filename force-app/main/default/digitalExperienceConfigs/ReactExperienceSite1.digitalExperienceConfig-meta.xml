@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DigitalExperienceConfig xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>ReactExperienceSite</label>
+    <site>
+        <urlPathPrefix>reactsite</urlPathPrefix>
+    </site>
+    <space>site/ReactExperienceSite1</space>
+</DigitalExperienceConfig>
